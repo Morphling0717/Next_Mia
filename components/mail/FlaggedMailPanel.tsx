@@ -1,0 +1,413 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import type { WindChimeMessageRecord } from "@windchime/embed";
+
+/** 我们在 API 返回里加了 `isFlagged`，WindChime 包的类型不含，这里本地扩一下 */
+export type FlaggableRecord = WindChimeMessageRecord & { isFlagged?: boolean };
+
+type Props = {
+  items: FlaggableRecord[];
+  authHeader: Record<string, string>;
+  /**
+   * 当前主题 id（给下面所有 fetch 调用带上 `?topicId=`做跨主题防呆。
+   * 不传时默认 `'default'`（安全兜底）。
+   */
+  topicId?: string;
+  onUnauthorized: () => void;
+  onAfterAction?: () => void;
+};
+
+type FullMessage = {
+  id: string;
+  createdAt: string;
+  text: string;
+  nickname: string | null;
+  linkUrl: string | null;
+  isFlagged: boolean;
+  senderLabel: string | null;
+  senderHash: string | null;
+};
+
+async function readError(res: Response): Promise<string> {
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    const j = (await res.json().catch(() => null)) as { error?: string } | null;
+    return j?.error ?? res.statusText;
+  }
+  return (await res.text().catch(() => "")) || res.statusText;
+}
+
+/** 从 URL 里解析出 hostname 做警示展示；解析失败返回空字符串。 */
+function safeHost(raw: string | null | undefined): string {
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    return u.hostname;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 「待审核」区：集中展示所有命中敏感词的留言（列表只显示发信人标签 +
+ * 时间）。主播点击"查看原文"才会拉取并弹出完整内容的 modal，避免在
+ * 后台列表默认页就被敏感词糊脸（比如直播时不小心拉到了后台）。
+ */
+export function FlaggedMailPanel({
+  items,
+  authHeader,
+  topicId = "default",
+  onUnauthorized,
+  onAfterAction,
+}: Props) {
+  const flagged = items.filter((m) => m.isFlagged);
+  const topicQuery = `topicId=${encodeURIComponent(topicId)}`;
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [openData, setOpenData] = useState<FullMessage | null>(null);
+  const [openLoading, setOpenLoading] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
+  const [acting, setActing] = useState(false);
+
+  const handleAuthError = useCallback(
+    (res: Response): boolean => {
+      if (res.status === 401) {
+        onUnauthorized();
+        return true;
+      }
+      return false;
+    },
+    [onUnauthorized],
+  );
+
+  const closeModal = useCallback(() => {
+    setOpenId(null);
+    setOpenData(null);
+    setOpenError(null);
+  }, []);
+
+  // 打开 modal 时拉原文
+  useEffect(() => {
+    if (!openId) return;
+    let cancelled = false;
+    setOpenLoading(true);
+    setOpenError(null);
+    setOpenData(null);
+    (async () => {
+      try {
+        const r = await fetch(
+          `/api/mail/messages/${encodeURIComponent(openId)}?${topicQuery}`,
+          { headers: authHeader, cache: "no-store" },
+        );
+        if (handleAuthError(r)) return;
+        if (!r.ok) throw new Error(await readError(r));
+        const j = (await r.json()) as FullMessage;
+        if (!cancelled) setOpenData(j);
+      } catch (e) {
+        if (!cancelled) {
+          setOpenError(e instanceof Error ? e.message : "加载失败");
+        }
+      } finally {
+        if (!cancelled) setOpenLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [openId, authHeader, handleAuthError, topicQuery]);
+
+  // ESC 关闭
+  useEffect(() => {
+    if (!openId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeModal();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openId, closeModal]);
+
+  const markRead = useCallback(async () => {
+    if (!openId) return;
+    setActing(true);
+    try {
+      const r = await fetch(
+        `/api/mail/messages/${encodeURIComponent(openId)}?${topicQuery}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({ isRead: true }),
+        },
+      );
+      if (handleAuthError(r)) return;
+      if (!r.ok) throw new Error(await readError(r));
+      onAfterAction?.();
+      closeModal();
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setActing(false);
+    }
+  }, [openId, authHeader, handleAuthError, onAfterAction, closeModal, topicQuery]);
+
+  const approveItem = useCallback(async () => {
+    if (!openId) return;
+    setActing(true);
+    try {
+      const r = await fetch(
+        `/api/mail/messages/${encodeURIComponent(openId)}?${topicQuery}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({ isFlagged: false }),
+        },
+      );
+      if (handleAuthError(r)) return;
+      if (!r.ok) throw new Error(await readError(r));
+      onAfterAction?.();
+      closeModal();
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setActing(false);
+    }
+  }, [openId, authHeader, handleAuthError, onAfterAction, closeModal, topicQuery]);
+
+  const deleteItem = useCallback(async () => {
+    if (!openId) return;
+    if (!window.confirm("确认删除这条留言？此操作会软删除，无法在当前界面恢复。")) {
+      return;
+    }
+    setActing(true);
+    try {
+      const r = await fetch(
+        `/api/mail/messages/${encodeURIComponent(openId)}?${topicQuery}`,
+        {
+          method: "DELETE",
+          headers: authHeader,
+        },
+      );
+      if (handleAuthError(r)) return;
+      if (!r.ok) throw new Error(await readError(r));
+      onAfterAction?.();
+      closeModal();
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "删除失败");
+    } finally {
+      setActing(false);
+    }
+  }, [openId, authHeader, handleAuthError, onAfterAction, closeModal, topicQuery]);
+
+  const blockSender = useCallback(async () => {
+    if (!openId) return;
+    if (
+      !window.confirm(
+        "拉黑这名发信人？TA 以后给**常规信箱 + 所有活动主题**投信都会被静默丢弃（跨主题黑名单）。",
+      )
+    ) {
+      return;
+    }
+    setActing(true);
+    try {
+      const r = await fetch(
+        `/api/mail/messages/${encodeURIComponent(openId)}/block?${topicQuery}`,
+        { method: "POST", headers: authHeader },
+      );
+      if (handleAuthError(r)) return;
+      if (!r.ok) throw new Error(await readError(r));
+      onAfterAction?.();
+      closeModal();
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "拉黑失败");
+    } finally {
+      setActing(false);
+    }
+  }, [openId, authHeader, handleAuthError, onAfterAction, closeModal, topicQuery]);
+
+  return (
+    <div className="rounded-2xl border border-rose-400/40 bg-(--mia-cream-soft)/85 p-5 shadow-[0_18px_44px_-22px_rgba(184,80,106,0.35)] backdrop-blur-xl sm:p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <div>
+          <div className="font-display text-sm font-bold tracking-[0.12em] text-(--mia-rose)">
+            ⚠ FLAGGED_INBOX · 待审核留言
+          </div>
+          <div className="mt-1 font-mono text-xs text-(--mia-gold-deep)/75">
+            共 {flagged.length} 条命中敏感词。默认只显示发信人与时间，
+            点击<span className="text-(--mia-rose)">「查看原文」</span>才会弹出完整内容。
+          </div>
+        </div>
+      </div>
+
+      {flagged.length === 0 ? (
+        <div className="py-8 text-center font-mono text-sm text-(--mia-warm-grey-deep)">
+          EMPTY · 当前无待审核留言
+        </div>
+      ) : (
+        <ul className="divide-y divide-rose-400/15">
+          {flagged.map((m) => (
+            <li
+              key={m.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-3"
+            >
+              <div className="flex flex-col">
+                <span className="font-mono text-sm font-bold text-(--mia-rose)">
+                  {m.senderLabel ?? "Unknown"}
+                </span>
+                <span className="font-mono text-[11px] text-(--mia-warm-grey-deep)">
+                  {new Date(m.createdAt).toLocaleString("zh-CN", {
+                    timeZone: "Asia/Shanghai",
+                    hour12: false,
+                  })}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenId(m.id)}
+                className="rounded-lg border border-(--mia-rose)/60 bg-(--mia-rose)/10 px-4 py-1.5 font-display text-xs text-(--mia-rose) transition hover:bg-(--mia-rose) hover:text-(--mia-cream)"
+              >
+                查看原文 →
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* 原文 Modal */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {openId && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-[1100] flex items-center justify-center bg-(--mia-ink)/55 p-4 backdrop-blur-md"
+                onClick={closeModal}
+              >
+                <motion.div
+                  initial={{ y: 24, opacity: 0, scale: 0.98 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 24, opacity: 0, scale: 0.98 }}
+                  transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                  className="relative w-full max-w-xl rounded-2xl border border-rose-400/60 bg-(--mia-cream-soft)/95 p-6 shadow-[0_18px_50px_-20px_rgba(184,80,106,0.45)]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    aria-label="关闭"
+                    className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-(--mia-rose)/60 bg-(--mia-cream)/95 text-(--mia-rose) transition hover:bg-(--mia-rose) hover:text-(--mia-cream)"
+                  >
+                    ×
+                  </button>
+                  <div className="mb-1 font-mono text-[11px] tracking-[0.25em] text-(--mia-rose)/80">
+                    FLAGGED · 待审核
+                  </div>
+                  <div className="font-display text-lg font-bold tracking-wide text-(--mia-rose)">
+                    {openData?.senderLabel ?? "Unknown"}
+                  </div>
+                  {openData?.createdAt && (
+                    <div className="mt-1 font-mono text-[11px] text-(--mia-warm-grey-deep)">
+                      {new Date(openData.createdAt).toLocaleString("zh-CN", {
+                        timeZone: "Asia/Shanghai",
+                        hour12: false,
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mt-4 min-h-[120px] rounded-xl border border-rose-400/30 bg-(--mia-cream-soft)/85 p-4">
+                    {openLoading && (
+                      <div className="py-6 text-center font-mono text-sm text-(--mia-rose)/75">
+                        LOADING…
+                      </div>
+                    )}
+                    {openError && (
+                      <div className="rounded border border-rose-500/50 bg-rose-500/10 px-3 py-2 font-mono text-xs text-(--mia-rose)">
+                        {openError}
+                      </div>
+                    )}
+                    {openData && !openLoading && (
+                      <div className="space-y-3">
+                        {openData.nickname && (
+                          <div className="font-mono text-xs text-(--mia-gold-deep)/75">
+                            称呼：
+                            <span className="text-(--mia-ink)">{openData.nickname}</span>
+                          </div>
+                        )}
+                        <div className="whitespace-pre-wrap break-words font-sans text-[15px] leading-relaxed text-(--mia-ink)">
+                          {openData.text}
+                        </div>
+                        {openData.linkUrl && (
+                          <div className="mt-2 space-y-1 font-mono text-xs">
+                            <div className="text-(--mia-gold-deep)/75">链接：</div>
+                            <a
+                              href={openData.linkUrl}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="group inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-(--mia-blush)/55 bg-(--mia-blush)/10 px-2 py-1.5 text-(--mia-rose) transition hover:border-(--mia-rose) hover:bg-(--mia-blush)/20"
+                            >
+                              <span className="shrink-0 text-(--mia-rose)" aria-hidden>
+                                ⚠
+                              </span>
+                              <span className="shrink-0 font-bold tracking-wide text-(--mia-rose)">
+                                {safeHost(openData.linkUrl) || "外站链接"}
+                              </span>
+                              <span className="break-all text-(--mia-rose)/80 group-hover:text-(--mia-rose)">
+                                {openData.linkUrl}
+                              </span>
+                            </a>
+                            <div className="text-[10px] leading-relaxed text-(--mia-warm-grey-deep)">
+                              匿名访客填入，已强制 <code>noopener/noreferrer</code>
+                              新窗口打开。点击前请确认域名，谨防钓鱼。
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={approveItem}
+                      disabled={!openData || acting}
+                      className="rounded-lg border border-emerald-500/55 bg-(--mia-cream)/85 px-3 py-1.5 font-display text-xs text-emerald-700 transition hover:bg-emerald-500 hover:text-(--mia-cream) disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      审核通过
+                    </button>
+                    <button
+                      type="button"
+                      onClick={markRead}
+                      disabled={!openData || acting}
+                      className="rounded-lg border border-(--mia-gold)/55 bg-(--mia-cream)/85 px-3 py-1.5 font-display text-xs text-(--mia-gold-deep) transition hover:bg-(--mia-gold) hover:text-(--mia-cream) disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      标为已读
+                    </button>
+                    <button
+                      type="button"
+                      onClick={blockSender}
+                      disabled={!openData || acting}
+                      className="rounded-lg border border-(--mia-blush)/65 bg-(--mia-cream)/85 px-3 py-1.5 font-display text-xs text-(--mia-rose) transition hover:bg-(--mia-blush) hover:text-(--mia-ink) disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      拉黑发信人
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deleteItem}
+                      disabled={!openData || acting}
+                      className="rounded-lg border border-(--mia-rose) bg-(--mia-rose) px-3 py-1.5 font-display text-xs font-bold text-(--mia-cream) shadow-[0_8px_18px_-10px_rgba(184,80,106,0.55)] transition hover:bg-[#a64432] hover:shadow-[0_10px_22px_-10px_rgba(184,80,106,0.7)] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      删除
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+    </div>
+  );
+}
