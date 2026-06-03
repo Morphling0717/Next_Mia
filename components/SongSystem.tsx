@@ -36,14 +36,12 @@ export const SongSystem: React.FC<SongSystemProps> = ({
   const uiConfig = config.song_ui;
 
   const categories: SongCategory[] = uiConfig.categories as SongCategory[];
+  const defaultTab = categories[0]?.id || 'all';
 
-  const [activeTab, setActiveTab] = useState<string>(categories[0]?.id || 'all');
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedSong, setCopiedSong] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth < 768;
-  });
+  const [isMobile, setIsMobile] = useState(false);
 
   const skipStagger = isMobile || disableAnimation;
   const songData = songs || [];
@@ -54,6 +52,12 @@ export const SongSystem: React.FC<SongSystemProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!categories.some((category) => category.id === activeTab)) {
+      setActiveTab(defaultTab);
+    }
+  }, [activeTab, categories, defaultTab]);
 
   const handleCopy = (text: string, name: string) => {
     navigator.clipboard.writeText(text).then(() => {
