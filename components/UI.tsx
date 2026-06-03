@@ -164,8 +164,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = "", 
         }}
       />
       {/* 黑十字 ✕ 角标（取代 UliUli 的霓虹青色边角） */}
-      <div className="absolute top-1 left-1 text-[var(--mia-ink)]/55 group-hover:text-[var(--mia-ink)]/85 text-[10px] font-bold transition-colors z-20 pointer-events-none">✚</div>
-      <div className="absolute bottom-1 right-1 text-[var(--mia-gold-deep)]/55 group-hover:text-[var(--mia-gold-deep)]/85 text-[10px] font-bold transition-colors z-20 pointer-events-none">✚</div>
+      <div className="absolute top-1 left-1 text-(--mia-ink)/55 group-hover:text-(--mia-ink)/85 text-[10px] font-bold transition-colors z-20 pointer-events-none">✚</div>
+      <div className="absolute bottom-1 right-1 text-(--mia-gold-deep)/55 group-hover:text-(--mia-gold-deep)/85 text-[10px] font-bold transition-colors z-20 pointer-events-none">✚</div>
       
       <div className="relative z-30 h-full">{children}</div>
     </motion.div>

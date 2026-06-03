@@ -5,6 +5,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard, Icons } from './UI';
+import type { RuntimeSiteConfig } from '@/lib/site-config';
 
 export interface SongItem {
   name: string;
@@ -19,19 +20,12 @@ export interface SongCategory {
 
 export interface SongSystemProps {
   addNotification: (msg: string) => void;
-  config?: any;
+  config: RuntimeSiteConfig;
   songs?: SongItem[];
   /** 强制跳过列表的桌面 stagger 动画。/app 入口里 SongSystem 嵌在小屏 panel 中，
    * 即使浏览器宽度 ≥ 768 也不应该走 ~9 秒的桌面 stagger 动画。 */
   disableAnimation?: boolean;
 }
-
-const DEFAULT_CATEGORIES: SongCategory[] = [
-  { id: 'all', label: 'ALL' },
-  { id: 'pop', label: '流行' },
-  { id: 'gufeng', label: '古风' },
-  { id: 'english', label: '英文' },
-];
 
 export const SongSystem: React.FC<SongSystemProps> = ({
   addNotification,
@@ -39,13 +33,9 @@ export const SongSystem: React.FC<SongSystemProps> = ({
   songs,
   disableAnimation = false,
 }) => {
-  const uiConfig = config?.song_ui || {
-    titlePrefix: 'HYMN',
-    titleSuffix: ' · 云端歌册',
-    categories: DEFAULT_CATEGORIES,
-  };
+  const uiConfig = config.song_ui;
 
-  const categories: SongCategory[] = (uiConfig.categories || DEFAULT_CATEGORIES) as SongCategory[];
+  const categories: SongCategory[] = uiConfig.categories as SongCategory[];
 
   const [activeTab, setActiveTab] = useState<string>(categories[0]?.id || 'all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,15 +58,18 @@ export const SongSystem: React.FC<SongSystemProps> = ({
   const handleCopy = (text: string, name: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedSong(name);
-      addNotification(`${uiConfig.copiedPrefix || '已抄写：'} ${name}`);
+      addNotification(`${uiConfig.copiedPrefix} ${name}`.trim());
       setTimeout(() => setCopiedSong(null), 2000);
     });
   };
 
+  const buildCopyText = (s: SongItem) =>
+    [uiConfig.copyCommandPrefix, s.name, s.artist].filter(Boolean).join(' ');
+
   const handleRandom = () => {
     if (songData.length === 0) return;
     const s = songData[Math.floor(Math.random() * songData.length)];
-    handleCopy(`点歌 ${s.name} ${s.artist}`, s.name);
+    handleCopy(buildCopyText(s), s.name);
   };
 
   const filteredSongs = useMemo(
@@ -110,8 +103,8 @@ export const SongSystem: React.FC<SongSystemProps> = ({
   return (
     <section id="song-system" className="container mx-auto px-6 mb-16 md:mb-32 relative z-10">
       <h2 className="font-display text-[7vw] md:text-4xl font-bold text-center mb-10 text-(--mia-ink) whitespace-nowrap">
-        {uiConfig.titlePrefix || 'HYMN'}
-        <span className="text-(--mia-gold)">{uiConfig.titleSuffix || ' · 云端歌册'}</span>
+        {uiConfig.titlePrefix}
+        <span className="text-(--mia-gold)">{uiConfig.titleSuffix}</span>
       </h2>
 
       <GlassCard
@@ -120,12 +113,12 @@ export const SongSystem: React.FC<SongSystemProps> = ({
       >
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 md:gap-6">
           <div className="font-serif-cn text-sm text-(--mia-gold-deep) text-center md:text-left">
-            {uiConfig.serverText || '云端教堂 · 共'} {songData.length} {uiConfig.songsUnit || '首歌'}
+            {uiConfig.serverText} {songData.length} {uiConfig.songsUnit}
           </div>
           <div className="flex gap-4 w-full md:w-auto">
             <input
               type="text"
-              placeholder={uiConfig.searchPlaceholder || '搜寻圣咏 / 歌名 / 歌手…'}
+              placeholder={uiConfig.searchPlaceholder}
               className="bg-white/60 border border-(--mia-gold)/40 rounded px-4 py-2 text-(--mia-ink) w-full md:w-64 focus:border-(--mia-gold) outline-none font-serif-cn text-sm placeholder:text-(--mia-gold-deep)/60"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -134,7 +127,7 @@ export const SongSystem: React.FC<SongSystemProps> = ({
               onClick={handleRandom}
               className="px-6 py-2 bg-(--mia-gold) text-(--mia-cream) font-display font-bold text-sm hover:bg-(--mia-gold-deep) hover:shadow-[0_0_15px_rgba(196,169,110,0.4)] transition-all whitespace-nowrap rounded"
             >
-              {uiConfig.randomizeBtn || '随机祈愿'}
+              {uiConfig.randomizeBtn}
             </button>
           </div>
         </div>
@@ -163,14 +156,14 @@ export const SongSystem: React.FC<SongSystemProps> = ({
             <div key={activeTab + searchTerm}>
               {filteredSongs.length === 0 ? (
                 <div className="text-center text-(--mia-gold-deep)/70 mt-20 font-serif-cn tracking-widest">
-                  {uiConfig.emptyText || '圣典中暂无此曲'}
+                  {uiConfig.emptyText}
                 </div>
               ) : (
                 filteredSongs.map((s, i) => (
                   <div
                     key={`${s.name}-${i}`}
                     className="flex justify-between items-center p-4 border-b border-(--mia-warm-grey)/55 transition-colors group cursor-pointer hover:bg-(--mia-gold)/10"
-                    onClick={() => handleCopy(`点歌 ${s.name} ${s.artist}`, s.name)}
+                    onClick={() => handleCopy(buildCopyText(s), s.name)}
                   >
                     <div>
                       <div className="font-medium font-serif-cn transition-colors text-(--mia-ink) group-hover:text-(--mia-gold-deep)">
@@ -181,7 +174,7 @@ export const SongSystem: React.FC<SongSystemProps> = ({
                       </div>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity text-(--mia-gold-deep)">
-                      {copiedSong === s.name ? (uiConfig.copiedTag || '已抄写') : <Icons.Copy size={16} />}
+                      {copiedSong === s.name ? uiConfig.copiedTag : <Icons.Copy size={16} />}
                     </div>
                   </div>
                 ))
@@ -201,7 +194,7 @@ export const SongSystem: React.FC<SongSystemProps> = ({
                     variants={itemVariants as any}
                     className="text-center text-(--mia-gold-deep)/70 mt-20 font-serif-cn tracking-widest"
                   >
-                    {uiConfig.emptyText || '圣典中暂无此曲'}
+                    {uiConfig.emptyText}
                   </motion.div>
                 ) : (
                   filteredSongs.map((s, i) => (
@@ -209,7 +202,7 @@ export const SongSystem: React.FC<SongSystemProps> = ({
                       key={`${s.name}-${i}`}
                       variants={itemVariants as any}
                       className="flex justify-between items-center p-4 border-b border-(--mia-warm-grey)/55 transition-colors group cursor-pointer hover:bg-(--mia-gold)/10"
-                      onClick={() => handleCopy(`点歌 ${s.name} ${s.artist}`, s.name)}
+                      onClick={() => handleCopy(buildCopyText(s), s.name)}
                     >
                       <div>
                         <div className="font-medium font-serif-cn transition-colors text-(--mia-ink) group-hover:text-(--mia-gold-deep)">
@@ -220,7 +213,7 @@ export const SongSystem: React.FC<SongSystemProps> = ({
                         </div>
                       </div>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity text-(--mia-gold-deep)">
-                        {copiedSong === s.name ? (uiConfig.copiedTag || '已抄写') : <Icons.Copy size={16} />}
+                        {copiedSong === s.name ? uiConfig.copiedTag : <Icons.Copy size={16} />}
                       </div>
                     </motion.div>
                   ))

@@ -14,7 +14,7 @@ import { ToastContainer } from './UI';
 import { MailSpeedDial, type MailEntryTexts } from './mail/MailSpeedDial';
 import { GlobalMailBanner } from './mail/GlobalMailBanner';
 import type { MailTexts } from './mail/MailSendModal';
-import type { ActiveTopicSummary } from './mail/mail-topic-types';
+import type { RuntimeSiteConfig } from '@/lib/site-config';
 
 // --- Types ---
 interface NotificationItem {
@@ -22,22 +22,8 @@ interface NotificationItem {
   message: string;
 }
 
-type SiteConfig = {
-  notifications?: {
-    systemInitializing?: string;
-  };
-  footer?: {
-    text?: string;
-  };
-  api?: {
-    bilibili?: string;
-  };
-  videos?: {
-    archiveTitle?: string;
-  };
-  mail?: MailEntryTexts & MailTexts;
-  activeTopics?: ActiveTopicSummary[];
-  mailEnabled?: boolean;
+type SiteConfig = RuntimeSiteConfig & {
+  mail: RuntimeSiteConfig["mail"] & MailEntryTexts & MailTexts;
 };
 
 interface VideoItem {
@@ -56,7 +42,7 @@ export interface HomeClientProps {
 }
 
 // --- 本地视频播放器（教堂日常 / 直播切片） ---
-const LocalVideoPlayer: React.FC<{ config?: SiteConfig; configVersion?: number }> = ({
+const LocalVideoPlayer: React.FC<{ config: SiteConfig; configVersion?: number }> = ({
   config,
   configVersion,
 }) => {
@@ -71,7 +57,7 @@ const LocalVideoPlayer: React.FC<{ config?: SiteConfig; configVersion?: number }
       <div className="flex items-center gap-4 mb-6">
         <div className="h-px bg-linear-to-r from-transparent to-(--mia-gold) flex-1 opacity-60"></div>
         <h2 className="font-display text-(--mia-gold-deep) tracking-widest text-sm md:text-xl font-bold flex items-center gap-2">
-          {config?.videos?.archiveTitle || '✚ MIA · ARCHIVE ✚'}
+          {config.videos.archiveTitle}
         </h2>
         <div className="h-px bg-linear-to-l from-transparent to-(--mia-gold) flex-1 opacity-60"></div>
       </div>
@@ -102,7 +88,9 @@ export default function HomeClient({
   initialConfigVersion,
   initialSongs,
 }: HomeClientProps) {
-  const [stats, setStats] = useState<string | number>('SYNCING...');
+  const [stats, setStats] = useState<string | number>(
+    initialSiteConfig.hero.statsLoadingText,
+  );
   const [liveStatus, setLiveStatus] = useState(false);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -113,7 +101,7 @@ export default function HomeClient({
   const [configVersion, setConfigVersion] = useState<number>(initialConfigVersion);
   const [songs, setSongs] = useState<SongSystemSongItem[]>(initialSongs);
 
-  const footerText = siteConfig?.footer?.text || '© 2026 星眠Mia · 云端教堂. All blessings reserved.';
+  const footerText = siteConfig.footer.text;
 
   // 0. 周期性轮询 /api/config，把 SSR 初始值替换为最新内容
   useEffect(() => {
@@ -141,7 +129,12 @@ export default function HomeClient({
             const id = Date.now();
             setNotifications((prev) => [
               ...prev,
-              { id, message: '云端教堂数据已更新，内容已自动刷新' },
+              {
+                id,
+                message:
+                  data.site_config?.system?.configUpdatedToast ||
+                  initialSiteConfig.system.configUpdatedToast,
+              },
             ]);
             setTimeout(() => {
               setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -179,7 +172,7 @@ export default function HomeClient({
       try {
         const apiUrl = siteConfig?.api?.bilibili;
         if (!apiUrl) {
-          setStats('待配置');
+          setStats(siteConfig.hero.statsPendingText);
           return;
         }
         const response = await fetch(apiUrl);
@@ -195,21 +188,20 @@ export default function HomeClient({
             }
           } else {
             console.error('API 业务错误:', data.error);
-            setStats('ERROR');
+            setStats(siteConfig.hero.statsErrorText);
           }
         } else {
           console.error('Failed to fetch Bilibili data');
-          setStats('ERROR');
+          setStats(siteConfig.hero.statsErrorText);
         }
       } catch (error) {
         console.error('API Fetch Error:', error);
-        setStats('OFFLINE');
+        setStats(siteConfig.hero.statsOfflineText);
       }
     };
 
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [siteConfig.api.bilibili, siteConfig.hero]);
 
   // 3. 通用功能函数
   const addNotification = (message: string) => {
@@ -223,14 +215,14 @@ export default function HomeClient({
   const assetVersionQuery = configVersion ? `?v=${configVersion}` : '';
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary errors={siteConfig.errors}>
       <div className="relative min-h-screen">
         <CustomCursor />
         <ThreeBackground />
         <ToastContainer notifications={notifications} />
 
         <main className="relative z-10 w-full block">
-          <GlobalMailBanner topics={siteConfig?.activeTopics} />
+          <GlobalMailBanner topics={siteConfig.activeTopics} />
           <Dashboard
             stats={stats}
             liveStatus={liveStatus}
@@ -265,8 +257,8 @@ export default function HomeClient({
         </main>
 
         <MailSpeedDial
-          texts={siteConfig?.mail}
-          mailEnabled={siteConfig?.mailEnabled}
+          texts={siteConfig.mail}
+          mailEnabled={siteConfig.mailEnabled}
           mailOpen={mailOpen}
           onMailOpenChange={setMailOpen}
         />

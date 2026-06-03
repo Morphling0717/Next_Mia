@@ -105,6 +105,10 @@ export function AdminTabContent(props: AdminTabContentProps) {
             <div className="md:col-span-2"><label className="text-xs text-gray-400">页面滚动提示文字</label><input type="text" className="input-dark" value={config.hero?.scrollText || "SCROLL"} onChange={(e) => updateConfig("hero", "scrollText", e.target.value)} /></div>
             <div><label className="text-xs text-gray-400">项目状态文字</label><input type="text" className="input-dark" value={config.hero?.statusText || ""} onChange={(e) => updateConfig("hero", "statusText", e.target.value)} /></div>
             <div><label className="text-xs text-gray-400">粉丝数字前缀</label><input type="text" className="input-dark" value={config.hero?.followersText || ""} onChange={(e) => updateConfig("hero", "followersText", e.target.value)} /></div>
+            <div><label className="text-xs text-gray-400">统计加载中</label><input type="text" className="input-dark" value={config.hero?.statsLoadingText || ""} onChange={(e) => updateConfig("hero", "statsLoadingText", e.target.value)} /></div>
+            <div><label className="text-xs text-gray-400">未配置 API</label><input type="text" className="input-dark" value={config.hero?.statsPendingText || ""} onChange={(e) => updateConfig("hero", "statsPendingText", e.target.value)} /></div>
+            <div><label className="text-xs text-gray-400">请求错误状态</label><input type="text" className="input-dark" value={config.hero?.statsErrorText || ""} onChange={(e) => updateConfig("hero", "statsErrorText", e.target.value)} /></div>
+            <div><label className="text-xs text-gray-400">离线状态</label><input type="text" className="input-dark" value={config.hero?.statsOfflineText || ""} onChange={(e) => updateConfig("hero", "statsOfflineText", e.target.value)} /></div>
           </div>
         </div>
       )}
@@ -117,6 +121,9 @@ export function AdminTabContent(props: AdminTabContentProps) {
               <div><label className="text-xs text-gray-400">标题前缀 (白字)</label><input type="text" className="input-dark" value={config.model?.titlePrefix || "PROJECT"} onChange={(e) => updateConfig("model", "titlePrefix", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">标题后缀 (蓝字)</label><input type="text" className="input-dark" value={config.model?.titleSuffix || "_DATA"} onChange={(e) => updateConfig("model", "titleSuffix", e.target.value)} /></div>
               <div className="md:col-span-2"><label className="text-xs text-gray-400">同步率文案</label><input type="text" className="input-dark" value={config.model?.syncRate || "SYNC_RATE: 100%"} onChange={(e) => updateConfig("model", "syncRate", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">缩略图占位文案</label><input type="text" className="input-dark" value={config.model?.facePlaceholder || ""} onChange={(e) => updateConfig("model", "facePlaceholder", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">立绘占位标题</label><input type="text" className="input-dark" value={config.model?.imagePlaceholderTitle || ""} onChange={(e) => updateConfig("model", "imagePlaceholderTitle", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">立绘缺图提示</label><input type="text" className="input-dark" value={config.model?.imageMissingText || ""} onChange={(e) => updateConfig("model", "imageMissingText", e.target.value)} /></div>
             </div>
           </div>
           <div className="card">
@@ -170,7 +177,6 @@ export function AdminTabContent(props: AdminTabContentProps) {
               <div><label className="text-xs text-gray-400">离线文案</label><input type="text" className="input-dark" value={config.live?.offlineText || ""} onChange={(e) => updateConfig("live", "offlineText", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">时间表标题</label><input type="text" className="input-dark" value={config.live?.scheduleTitle || ""} onChange={(e) => updateConfig("live", "scheduleTitle", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">点歌规则标题</label><input type="text" className="input-dark" value={config.live?.rulesTitle || ""} onChange={(e) => updateConfig("live", "rulesTitle", e.target.value)} /></div>
-              <div className="md:col-span-2"><label className="text-xs text-gray-400">小游戏传送门文案</label><input type="text" className="input-dark" value={config.live?.gamePortalText || ""} onChange={(e) => updateConfig("live", "gamePortalText", e.target.value)} /></div>
             </div>
           </div>
           <div className="card">
@@ -232,7 +238,7 @@ export function AdminTabContent(props: AdminTabContentProps) {
             <div><label className="text-xs text-gray-400">标题前缀 (白字)</label><input type="text" className="input-dark" value={config.gallery?.titlePrefix || "VISUAL"} onChange={(e) => updateConfig("gallery", "titlePrefix", e.target.value)} /></div>
             <div><label className="text-xs text-gray-400">标题后缀 (蓝字)</label><input type="text" className="input-dark" value={config.gallery?.titleSuffix || "_ARCHIVE"} onChange={(e) => updateConfig("gallery", "titleSuffix", e.target.value)} /></div>
             <div className="md:col-span-2"><label className="text-xs text-gray-400">下方滚动文字</label><input type="text" className="input-dark" value={config.gallery?.scrollText || "SCROLL TO EXPLORE >>>"} onChange={(e) => updateConfig("gallery", "scrollText", e.target.value)} /></div>
-            <div className="md:col-span-2 mt-4"><label className="text-xs text-gray-400">API 地址 (需部署 Vercel 脚本)</label><input type="text" className="input-dark" value={config.api?.bilibili || ""} onChange={(e) => updateNested("api", "bilibili", "", e.target.value)} /></div>
+            <div className="md:col-span-2 mt-4"><label className="text-xs text-gray-400">API 地址 (需部署 Vercel 脚本)</label><input type="text" className="input-dark" value={config.api?.bilibili || ""} onChange={(e) => updateConfig("api", "bilibili", e.target.value)} /></div>
             <div className="md:col-span-2"><label className="text-xs text-gray-400">视频日期前缀 (如: DATE //)</label><input type="text" className="input-dark" value={config.gallery?.datePrefix || ""} onChange={(e) => updateConfig("gallery", "datePrefix", e.target.value)} /></div>
           </div>
         </div>
@@ -259,7 +265,7 @@ export function AdminTabContent(props: AdminTabContentProps) {
               </div>
               <div>
                 <label className="text-xs text-gray-400">Tooltip（开启态）</label>
-                <input type="text" className="input-dark" placeholder="匿名投信给 Uli" value={config.mail?.entryHint || ""} onChange={(e) => updateConfig("mail", "entryHint", e.target.value)} />
+                <input type="text" className="input-dark" placeholder="匿名交付给 Mia" value={config.mail?.entryHint || ""} onChange={(e) => updateConfig("mail", "entryHint", e.target.value)} />
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs text-gray-400">Tooltip（发信箱关闭时）</label>
@@ -278,7 +284,7 @@ export function AdminTabContent(props: AdminTabContentProps) {
               </div>
               <div>
                 <label className="text-xs text-gray-400">副标题 / 招呼语</label>
-                <input type="text" className="input-dark" placeholder="把想对 Uli 说的话，匿名地投进这个信箱" value={config.mail?.senderTagline || ""} onChange={(e) => updateConfig("mail", "senderTagline", e.target.value)} />
+                <input type="text" className="input-dark" placeholder="在云端教堂御前，把想对 Mia 说的话匿名上交" value={config.mail?.senderTagline || ""} onChange={(e) => updateConfig("mail", "senderTagline", e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-gray-400">状态徽章（开启）</label>
@@ -290,7 +296,7 @@ export function AdminTabContent(props: AdminTabContentProps) {
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs text-gray-400">发送成功提示</label>
-                <input type="text" className="input-dark" placeholder="SIGNAL SENT · 信号已送达，Uli 会在直播时读到 ~" value={config.mail?.successMessage || ""} onChange={(e) => updateConfig("mail", "successMessage", e.target.value)} />
+                <input type="text" className="input-dark" placeholder="已送达云端教堂 · Mia 会在直播时读到 ~" value={config.mail?.successMessage || ""} onChange={(e) => updateConfig("mail", "successMessage", e.target.value)} />
               </div>
             </div>
           </div>
@@ -338,16 +344,13 @@ export function AdminTabContent(props: AdminTabContentProps) {
             <div className="grid gap-4 md:grid-cols-2 mb-4">
               <div><label className="text-xs text-gray-400">标题前缀 (白字)</label><input type="text" className="input-dark" value={config.song_ui?.titlePrefix || "SONG"} onChange={(e) => updateConfig("song_ui", "titlePrefix", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">标题后缀 (蓝字)</label><input type="text" className="input-dark" value={config.song_ui?.titleSuffix || "_DATABASE"} onChange={(e) => updateConfig("song_ui", "titleSuffix", e.target.value)} /></div>
-              <div><label className="text-xs text-gray-400">服务器状态文字</label><input type="text" className="input-dark" value={config.song_ui?.serverText || "SERVER:"} onChange={(e) => updateConfig("song_ui", "serverText", e.target.value)} /></div>
-              <div><label className="text-xs text-gray-400">在线状态文字</label><input type="text" className="input-dark" value={config.song_ui?.serverOnline || "ONLINE"} onChange={(e) => updateConfig("song_ui", "serverOnline", e.target.value)} /></div>
-              <div><label className="text-xs text-gray-400">离线状态文字</label><input type="text" className="input-dark" value={config.song_ui?.serverOffline || "OFFLINE"} onChange={(e) => updateConfig("song_ui", "serverOffline", e.target.value)} /></div>
-              <div><label className="text-xs text-gray-400">虚拟货币文字</label><input type="text" className="input-dark" value={config.song_ui?.pityText || "PITY:"} onChange={(e) => updateConfig("song_ui", "pityText", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">数量前缀</label><input type="text" className="input-dark" value={config.song_ui?.serverText || "SERVER:"} onChange={(e) => updateConfig("song_ui", "serverText", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">数量单位</label><input type="text" className="input-dark" value={config.song_ui?.songsUnit || ""} onChange={(e) => updateConfig("song_ui", "songsUnit", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">搜索框提示文字</label><input type="text" className="input-dark" value={config.song_ui?.searchPlaceholder || "SEARCH..."} onChange={(e) => updateConfig("song_ui", "searchPlaceholder", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">随机按钮文字</label><input type="text" className="input-dark" value={config.song_ui?.randomizeBtn || "RANDOMIZE"} onChange={(e) => updateConfig("song_ui", "randomizeBtn", e.target.value)} /></div>
-              <div><label className="text-xs text-gray-400">同步中按钮文字</label><input type="text" className="input-dark" value={config.song_ui?.syncingBtn || "SYNC..."} onChange={(e) => updateConfig("song_ui", "syncingBtn", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">复制提示前缀</label><input type="text" className="input-dark" value={config.song_ui?.copiedPrefix || ""} onChange={(e) => updateConfig("song_ui", "copiedPrefix", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">复制命令前缀</label><input type="text" className="input-dark" value={config.song_ui?.copyCommandPrefix || ""} onChange={(e) => updateConfig("song_ui", "copyCommandPrefix", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">无数据提示</label><input type="text" className="input-dark" value={config.song_ui?.emptyText || ""} onChange={(e) => updateConfig("song_ui", "emptyText", e.target.value)} /></div>
-              <div><label className="text-xs text-gray-400">隐藏曲标签文字</label><input type="text" className="input-dark" value={config.song_ui?.secretTag || ""} onChange={(e) => updateConfig("song_ui", "secretTag", e.target.value)} /></div>
               <div><label className="text-xs text-gray-400">已复制标识</label><input type="text" className="input-dark" value={config.song_ui?.copiedTag || ""} onChange={(e) => updateConfig("song_ui", "copiedTag", e.target.value)} /></div>
             </div>
           </div>
@@ -418,26 +421,57 @@ export function AdminTabContent(props: AdminTabContentProps) {
 
       {/* hidden + gacha tabs removed in Mia */}
 
-      {activeTab === "notifications" && (
-        <div className="card">
-          <div className="section-title"><Bell className="w-4 h-4" /> 通知文本配置</div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div><label className="text-xs text-gray-400">模型被点击通知</label><input type="text" className="input-dark" value={config.notifications?.modelClicked || ""} onChange={(e) => updateConfig("notifications", "modelClicked", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">点击警告文案</label><input type="text" className="input-dark" placeholder="WARNING: {count} CLICKS TO OVERRIDE" value={config.notifications?.clickWarning || ""} onChange={(e) => updateConfig("notifications", "clickWarning", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">解锁通知</label><input type="text" className="input-dark" value={config.notifications?.unlocked || ""} onChange={(e) => updateConfig("notifications", "unlocked", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">已解锁通知</label><input type="text" className="input-dark" value={config.notifications?.alreadyUnlocked || ""} onChange={(e) => updateConfig("notifications", "alreadyUnlocked", e.target.value)} /></div>
-            <div className="md:col-span-2"><label className="text-xs text-gray-400">系统初始化文案</label><input type="text" className="input-dark" value={config.notifications?.systemInitializing || ""} onChange={(e) => updateConfig("notifications", "systemInitializing", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">出金弹窗标题</label><input type="text" className="input-dark" value={config.notifications?.goldenAlertTitle || ""} onChange={(e) => updateConfig("notifications", "goldenAlertTitle", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">出金弹窗副标题</label><input type="text" className="input-dark" value={config.notifications?.goldenAlertSubtitle || ""} onChange={(e) => updateConfig("notifications", "goldenAlertSubtitle", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">出金恭喜标题</label><input type="text" className="input-dark" value={config.notifications?.goldenCongratsTitle || ""} onChange={(e) => updateConfig("notifications", "goldenCongratsTitle", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">时间戳前缀</label><input type="text" className="input-dark" value={config.notifications?.timestampPrefix || ""} onChange={(e) => updateConfig("notifications", "timestampPrefix", e.target.value)} /></div>
-            <div className="md:col-span-2"><label className="text-xs text-gray-400">出金说明正文</label><input type="text" className="input-dark" value={config.notifications?.goldenBody || ""} onChange={(e) => updateConfig("notifications", "goldenBody", e.target.value)} /></div>
-            <div className="md:col-span-2"><label className="text-xs text-gray-400">确认按钮文案</label><input type="text" className="input-dark" value={config.notifications?.acknowledgeText || ""} onChange={(e) => updateConfig("notifications", "acknowledgeText", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">错误页标题</label><input type="text" className="input-dark" value={config.errors?.title || ""} onChange={(e) => updateConfig("errors", "title", e.target.value)} /></div>
-            <div><label className="text-xs text-gray-400">错误页说明</label><input type="text" className="input-dark" value={config.errors?.message || ""} onChange={(e) => updateConfig("errors", "message", e.target.value)} /></div>
-            <div className="md:col-span-2"><label className="text-xs text-gray-400">错误页重试按钮</label><input type="text" className="input-dark" value={config.errors?.retryText || ""} onChange={(e) => updateConfig("errors", "retryText", e.target.value)} /></div>
+      {activeTab === "system" && (
+        <>
+          <div className="card">
+            <div className="section-title"><Bell className="w-4 h-4" /> 系统提示</div>
+            <div className="grid gap-4">
+              <div><label className="text-xs text-gray-400">配置更新 Toast</label><input type="text" className="input-dark" value={config.system?.configUpdatedToast || ""} onChange={(e) => updateConfig("system", "configUpdatedToast", e.target.value)} /></div>
+            </div>
           </div>
-        </div>
+          <div className="card">
+            <div className="section-title"><Type className="w-4 h-4" /> SEO / 分享文案</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div><label className="text-xs text-gray-400">页面标题</label><input type="text" className="input-dark" value={config.seo?.title || ""} onChange={(e) => updateConfig("seo", "title", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">站点名</label><input type="text" className="input-dark" value={config.seo?.siteName || ""} onChange={(e) => updateConfig("seo", "siteName", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">页面描述</label><textarea className="input-dark h-24" value={config.seo?.description || ""} onChange={(e) => updateConfig("seo", "description", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">关键词（逗号或换行分隔）</label><textarea className="input-dark h-24" value={(config.seo?.keywords || []).join("\n")} onChange={(e) => updateConfig("seo", "keywords", e.target.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean))} /></div>
+              <div><label className="text-xs text-gray-400">歌单结构化数据标题</label><input type="text" className="input-dark" value={config.seo?.playlistName || ""} onChange={(e) => updateConfig("seo", "playlistName", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">歌单结构化数据描述</label><input type="text" className="input-dark" value={config.seo?.playlistDescription || ""} onChange={(e) => updateConfig("seo", "playlistDescription", e.target.value)} /></div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="section-title"><Type className="w-4 h-4" /> PWA 安装 / 更新提示</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div><label className="text-xs text-gray-400">Manifest 名称</label><input type="text" className="input-dark" value={config.pwa?.manifestName || ""} onChange={(e) => updateConfig("pwa", "manifestName", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">Manifest 短名称</label><input type="text" className="input-dark" value={config.pwa?.manifestShortName || ""} onChange={(e) => updateConfig("pwa", "manifestShortName", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">Manifest 描述</label><input type="text" className="input-dark" value={config.pwa?.manifestDescription || ""} onChange={(e) => updateConfig("pwa", "manifestDescription", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">安装卡片标题</label><input type="text" className="input-dark" value={config.pwa?.installTitle || ""} onChange={(e) => updateConfig("pwa", "installTitle", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">安装按钮</label><input type="text" className="input-dark" value={config.pwa?.installButton || ""} onChange={(e) => updateConfig("pwa", "installButton", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">安装说明（安卓/桌面）</label><input type="text" className="input-dark" value={config.pwa?.installDescription || ""} onChange={(e) => updateConfig("pwa", "installDescription", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">安装说明（iOS）</label><input type="text" className="input-dark" value={config.pwa?.installIosDescription || ""} onChange={(e) => updateConfig("pwa", "installIosDescription", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">iOS 步骤一</label><input type="text" className="input-dark" value={config.pwa?.iosStepOne || ""} onChange={(e) => updateConfig("pwa", "iosStepOne", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">iOS 步骤二</label><input type="text" className="input-dark" value={config.pwa?.iosStepTwo || ""} onChange={(e) => updateConfig("pwa", "iosStepTwo", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">更新标题</label><input type="text" className="input-dark" value={config.pwa?.updateTitle || ""} onChange={(e) => updateConfig("pwa", "updateTitle", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">更新按钮</label><input type="text" className="input-dark" value={config.pwa?.updateButton || ""} onChange={(e) => updateConfig("pwa", "updateButton", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">更新说明</label><input type="text" className="input-dark" value={config.pwa?.updateDescription || ""} onChange={(e) => updateConfig("pwa", "updateDescription", e.target.value)} /></div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="section-title"><Type className="w-4 h-4" /> 离线页 / 错误页</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div><label className="text-xs text-gray-400">离线页 Metadata 标题</label><input type="text" className="input-dark" value={config.offline?.metadataTitle || ""} onChange={(e) => updateConfig("offline", "metadataTitle", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">离线页 Metadata 描述</label><input type="text" className="input-dark" value={config.offline?.metadataDescription || ""} onChange={(e) => updateConfig("offline", "metadataDescription", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">离线页标题</label><input type="text" className="input-dark" value={config.offline?.title || ""} onChange={(e) => updateConfig("offline", "title", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">离线页状态文字</label><input type="text" className="input-dark" value={config.offline?.statusText || ""} onChange={(e) => updateConfig("offline", "statusText", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">离线页说明</label><textarea className="input-dark h-24" value={config.offline?.body || ""} onChange={(e) => updateConfig("offline", "body", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">离线页重试按钮</label><input type="text" className="input-dark" value={config.offline?.retryButton || ""} onChange={(e) => updateConfig("offline", "retryButton", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">错误页标题</label><input type="text" className="input-dark" value={config.errors?.title || ""} onChange={(e) => updateConfig("errors", "title", e.target.value)} /></div>
+              <div><label className="text-xs text-gray-400">错误页重试按钮</label><input type="text" className="input-dark" value={config.errors?.retryText || ""} onChange={(e) => updateConfig("errors", "retryText", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="text-xs text-gray-400">错误页说明</label><input type="text" className="input-dark" value={config.errors?.message || ""} onChange={(e) => updateConfig("errors", "message", e.target.value)} /></div>
+            </div>
+          </div>
+        </>
       )}
 
       {activeTab === "videos" && (

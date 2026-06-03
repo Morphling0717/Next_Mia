@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { PwaInstallGate } from "@/components/pwa-install-gate";
 import { PwaUpdateBanner } from "@/components/pwa-update-banner";
+import { loadEditableSiteConfig } from "@/lib/site-data";
+import type { EditableSiteConfig } from "@/lib/site-config";
 import "./globals.css";
 
 type IphoneSplash = { w: number; h: number; deviceWidth: number; deviceHeight: number; ratio: number };
@@ -38,21 +40,6 @@ const canonicalUrl = new URL("/", siteOrigin).toString();
 const ogImageLandscape = new URL("/og-image.jpg", siteOrigin).toString();
 // 方形分享图（微信 / 微博 / QQ 国内分享卡片更多用方形缩略图）。
 const ogImageSquare = new URL("/app.jpg", siteOrigin).toString();
-const siteTitle = "星眠Mia | 云端教堂";
-const siteDescription = "星眠Mia（Mia）官方主站：天使猫猫见习牧师的云端教堂——杂谈祈祷室、歌回聆音庭、游戏回憩趣园。";
-const siteKeywords = [
-  "星眠Mia",
-  "星眠",
-  "Mia",
-  "XingmianMia",
-  "云端教堂",
-  "天使猫猫",
-  "见习牧师",
-  "VTuber",
-  "虚拟主播",
-  "歌回",
-  "直播",
-];
 const sameAsLinks = [
   process.env.NEXT_PUBLIC_BILIBILI_LIVE_URL,
   process.env.NEXT_PUBLIC_BILIBILI_SPACE_URL,
@@ -72,126 +59,151 @@ const verificationMetas = [
   { name: "msvalidate.01", content: bingSiteVerification },
   { name: "google-site-verification", content: googleSiteVerification },
 ].filter((item): item is { name: string; content: string } => Boolean(item.content));
-const structuredData = [
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function getStructuredAlternateNames(config: EditableSiteConfig) {
+  return uniqueStrings([config.pwa.manifestShortName, config.seo.siteName, ...config.seo.keywords.slice(0, 6)]);
+}
+
+function getProfileJobTitle(config: EditableSiteConfig) {
+  return (
+    config.seo.keywords.find((keyword) => /vtuber|主播|直播/i.test(keyword)) ||
+    config.seo.keywords[0] ||
+    config.pwa.manifestShortName
+  );
+}
+
+function buildStructuredData(config: EditableSiteConfig) {
+  const alternateName = getStructuredAlternateNames(config);
+
+  return [
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: siteTitle,
-    alternateName: ["星眠", "星眠Mia", "Mia", "XingmianMia"],
+    name: config.seo.siteName,
+    alternateName,
     url: canonicalUrl,
-    description: siteDescription,
+    description: config.seo.description,
     inLanguage: "zh-CN",
-    keywords: siteKeywords.join(", "),
+    keywords: config.seo.keywords.join(", "),
   },
   {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    name: "星眠Mia 云端教堂",
+    name: config.seo.siteName,
     url: canonicalUrl,
     inLanguage: "zh-CN",
     mainEntity: {
       "@type": "Person",
-      name: "星眠Mia",
-      alternateName: ["星眠", "Mia", "XingmianMia"],
-      description: siteDescription,
+      name: config.pwa.manifestShortName,
+      alternateName,
+      description: config.seo.description,
       url: canonicalUrl,
       image: new URL("/og-image.jpg", siteOrigin).toString(),
-      jobTitle: "VTuber",
+      jobTitle: getProfileJobTitle(config),
       ...(sameAsLinks.length > 0 ? { sameAs: sameAsLinks } : {}),
     },
   },
-];
+  ];
+}
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteOrigin),
-  title: siteTitle,
-  description: siteDescription,
-  keywords: siteKeywords,
-  authors: [{ name: "星眠Mia", url: canonicalUrl }],
-  creator: "星眠Mia",
-  publisher: "星眠Mia",
-  category: "entertainment",
-  classification: "VTuber, Music, Live Streaming",
-  alternates: {
-    canonical: canonicalUrl,
-    // 单语站点显式声明 zh-CN，避免 Google 把空缺的 hreflang 误判成需要其他语言版本。
-    languages: {
-      "zh-CN": canonicalUrl,
-      "x-default": canonicalUrl,
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await loadEditableSiteConfig();
+
+  return {
+    metadataBase: new URL(siteOrigin),
+    title: config.seo.title,
+    description: config.seo.description,
+    keywords: config.seo.keywords,
+    authors: [{ name: config.pwa.manifestShortName, url: canonicalUrl }],
+    creator: config.pwa.manifestShortName,
+    publisher: config.pwa.manifestShortName,
+    category: "entertainment",
+    classification: config.seo.keywords.join(", "),
+    alternates: {
+      canonical: canonicalUrl,
+      // 单语站点显式声明 zh-CN，避免 Google 把空缺的 hreflang 误判成需要其他语言版本。
+      languages: {
+        "zh-CN": canonicalUrl,
+        "x-default": canonicalUrl,
+      },
     },
-  },
-  formatDetection: {
-    telephone: false,
-    address: false,
-    email: false,
-  },
-  applicationName: "星眠Mia",
-  manifest: "/manifest.webmanifest",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    formatDetection: {
+      telephone: false,
+      address: false,
+      email: false,
+    },
+    applicationName: config.pwa.manifestShortName,
+    manifest: "/manifest.webmanifest",
+    robots: {
       index: true,
       follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
-  },
-  openGraph: {
-    title: siteTitle,
-    description: siteDescription,
-    url: canonicalUrl,
-    siteName: "星眠Mia | 云端教堂",
-    images: [
-      {
-        url: ogImageLandscape,
-        width: 1200,
-        height: 630,
-        alt: "星眠Mia | 云端教堂",
-        type: "image/jpeg",
-      },
-      {
-        url: ogImageSquare,
-        width: 402,
-        height: 402,
-        alt: "星眠Mia",
-        type: "image/jpeg",
-      },
-    ],
-    locale: "zh_CN",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: siteTitle,
-    description: siteDescription,
-    images: [ogImageLandscape],
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "星眠Mia",
-    startupImage: startupImages,
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico?v=2", sizes: "any" },
-      { url: "/app.jpg", type: "image/jpeg", sizes: "402x402" },
-    ],
-    shortcut: "/favicon.ico?v=2",
-    apple: [
-      // iOS 添加到主屏幕标准入口；402x402 jpg 在 iOS 12+ 上能正确呈现。
-      { url: "/app.jpg", sizes: "180x180", type: "image/jpeg" },
-      { url: "/app.jpg", sizes: "402x402", type: "image/jpeg" },
-    ],
-  },
-  other: {
-    "applicable-device": "pc,mobile",
-    "msapplication-TileColor": "#fbf6ec",
-    "image_src": ogImageSquare,
-  },
-};
+    openGraph: {
+      title: config.seo.title,
+      description: config.seo.description,
+      url: canonicalUrl,
+      siteName: config.seo.siteName,
+      images: [
+        {
+          url: ogImageLandscape,
+          width: 1200,
+          height: 630,
+          alt: config.seo.siteName,
+          type: "image/jpeg",
+        },
+        {
+          url: ogImageSquare,
+          width: 402,
+          height: 402,
+          alt: config.pwa.manifestShortName,
+          type: "image/jpeg",
+        },
+      ],
+      locale: "zh_CN",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: config.seo.title,
+      description: config.seo.description,
+      images: [ogImageLandscape],
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: config.pwa.manifestShortName,
+      startupImage: startupImages,
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.ico?v=2", sizes: "any" },
+        { url: "/app.jpg", type: "image/jpeg", sizes: "402x402" },
+      ],
+      shortcut: "/favicon.ico?v=2",
+      apple: [
+        // iOS 添加到主屏幕标准入口；402x402 jpg 在 iOS 12+ 上能正确呈现。
+        { url: "/app.jpg", sizes: "180x180", type: "image/jpeg" },
+        { url: "/app.jpg", sizes: "402x402", type: "image/jpeg" },
+      ],
+    },
+    other: {
+      "applicable-device": "pc,mobile",
+      "msapplication-TileColor": "#fbf6ec",
+      "image_src": ogImageSquare,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -200,11 +212,14 @@ export const viewport: Viewport = {
   themeColor: "#fbf6ec",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const siteConfig = await loadEditableSiteConfig();
+  const structuredData = buildStructuredData(siteConfig);
+
   return (
     <html lang="zh-CN">
       <head>
@@ -271,8 +286,8 @@ export default function RootLayout({
 
         {/* 页面主要内容 */}
         {children}
-        <PwaUpdateBanner />
-        <PwaInstallGate />
+        <PwaUpdateBanner texts={siteConfig.pwa} />
+        <PwaInstallGate texts={siteConfig.pwa} />
       </body>
     </html>
   );

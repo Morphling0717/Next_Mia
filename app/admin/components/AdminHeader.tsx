@@ -38,7 +38,7 @@ export function AdminHeader({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="flex items-center gap-2 font-display text-3xl font-bold text-(--mia-ink)">
-            <Terminal className="text-[var(--mia-gold-deep)]" />
+            <Terminal className="text-(--mia-gold-deep)" />
             MIA · ADMIN
           </h1>
           <p className="mt-1 font-serif-cn text-xs text-(--mia-gold-deep)">

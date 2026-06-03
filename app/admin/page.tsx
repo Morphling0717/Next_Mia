@@ -7,6 +7,7 @@ import { AdminTabContent } from "./components/AdminTabContent";
 import { AdminTabsNav } from "./components/AdminTabsNav";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { AdminTabId, AssetFile, SiteConfig, SongItem } from "./types";
+import { sanitizeEditableSiteConfig } from "@/lib/site-config";
 
 const EDITOR_NAME_STORAGE_KEY = "mia:admin:editor-name";
 
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
   // ===== STATE MANAGEMENT =====
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTabId>("hero");
-  const [config, setConfig] = useState<SiteConfig>({});
+  const [config, setConfig] = useState<SiteConfig>(() => sanitizeEditableSiteConfig({}));
   const [songData, setSongData] = useState<SongItem[]>([]);
 
   // Assets state
@@ -80,7 +81,7 @@ export default function AdminDashboard() {
       const data = (await res.json()) as ConfigLoadResponse;
       
       if (data.success) {
-        setConfig(data.site_config || {});
+        setConfig(sanitizeEditableSiteConfig(data.site_config || {}));
         setSongData(data.songs || []);
         setConfigVersion(Number(data.config_version || 0));
         setConfigUpdatedAt(data.config_updated_at ?? null);

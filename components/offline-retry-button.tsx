@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { RefreshIcon } from "tdesign-icons-react";
+import type { EditableSiteConfig } from "@/lib/site-config";
 
-export function OfflineRetryButton() {
+type OfflineRetryButtonProps = {
+  text: EditableSiteConfig["offline"]["retryButton"];
+};
+
+export function OfflineRetryButton({ text }: OfflineRetryButtonProps) {
   const [online, setOnline] = useState(true);
 
   useEffect(() => {
@@ -32,7 +37,7 @@ export function OfflineRetryButton() {
       className="mt-6 inline-flex items-center gap-2 rounded-full bg-(--mia-gold) px-5 py-2.5 text-xs font-semibold text-(--mia-cream) transition hover:bg-(--mia-gold-deep) active:scale-[0.97]"
     >
       <RefreshIcon className="h-3.5 w-3.5" />
-      重新连接
+      {text}
     </button>
   );
 }

@@ -39,13 +39,13 @@ function toSongSystemItem(s: SongRecord): SongSystemSongItem {
 }
 
 // 把数据库里的常规歌单导出成 schema.org MusicPlaylist
-function buildMusicPlaylistSchema(songs: SongRecord[]) {
+function buildMusicPlaylistSchema(songs: SongRecord[], siteConfig: Awaited<ReturnType<typeof loadInitialSiteData>>["siteConfig"]) {
   if (!songs.length) return null;
   return {
     '@context': 'https://schema.org',
     '@type': 'MusicPlaylist',
-    name: '星眠Mia 云端歌册',
-    description: '星眠Mia（Mia）的云端教堂点歌单，包含圣咏、流行、古风、英文、日文等曲目。',
+    name: siteConfig.seo.playlistName,
+    description: siteConfig.seo.playlistDescription,
     url: new URL('/#song-system', siteOrigin).toString(),
     numTracks: songs.length,
     inLanguage: 'zh-CN',
@@ -64,7 +64,7 @@ function buildMusicPlaylistSchema(songs: SongRecord[]) {
 export default async function HomePage() {
   const initial = await loadInitialSiteData();
 
-  const playlistSchema = buildMusicPlaylistSchema(initial.songs);
+  const playlistSchema = buildMusicPlaylistSchema(initial.songs, initial.siteConfig);
 
   return (
     <>

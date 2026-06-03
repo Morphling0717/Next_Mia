@@ -104,11 +104,11 @@ export function MailSpeedDial({
               className="pointer-events-auto flex flex-col-reverse items-center gap-3"
             >
               <SpeedDialItem
-                label={texts?.entryLabel || "发信箱"}
+                label={texts?.entryLabel ?? ""}
                 hint={
                   mailDisabled
-                    ? (texts?.entryHintDisabled || "发信箱暂时关闭")
-                    : (texts?.entryHint || "匿名交付给 Mia")
+                    ? (texts?.entryHintDisabled ?? "")
+                    : (texts?.entryHint ?? "")
                 }
                 disabled={mailDisabled}
                 onClick={onOpenMail}

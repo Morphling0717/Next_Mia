@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RefreshIcon as RefreshCw, StarIcon as Sparkles } from "tdesign-icons-react";
+import type { EditableSiteConfig } from "@/lib/site-config";
 
-export function PwaUpdateBanner() {
+type PwaUpdateBannerProps = {
+  texts: EditableSiteConfig["pwa"];
+};
+
+export function PwaUpdateBanner({ texts }: PwaUpdateBannerProps) {
   const [updateReady, setUpdateReady] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,9 +114,9 @@ export function PwaUpdateBanner() {
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-(--mia-ink)">发现新版本</div>
+              <div className="text-sm font-semibold text-(--mia-ink)">{texts.updateTitle}</div>
               <div className="mt-0.5 text-[11px] leading-snug text-(--mia-warm-grey-deep)">
-                点击立即应用，无需重装
+                {texts.updateDescription}
               </div>
             </div>
             <button
@@ -120,7 +125,7 @@ export function PwaUpdateBanner() {
               className="flex shrink-0 items-center gap-1 rounded-full bg-(--mia-gold) px-3 py-2 text-xs font-semibold text-(--mia-cream) shadow-[0_6px_16px_-8px_rgba(196,169,110,0.55)] transition hover:bg-(--mia-gold-deep) active:scale-[0.96]"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              更新
+              {texts.updateButton}
             </button>
           </div>
         </div>

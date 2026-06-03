@@ -1,11 +1,14 @@
 import type { MetadataRoute } from "next";
+import { loadEditableSiteConfig } from "@/lib/site-data";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const config = await loadEditableSiteConfig();
+
   return {
     id: "/",
-    name: "星眠Mia 云端教堂",
-    short_name: "星眠Mia",
-    description: "星眠Mia·云端教堂：天使猫猫见习牧师的可安装网页应用。",
+    name: config.pwa.manifestName,
+    short_name: config.pwa.manifestShortName,
+    description: config.pwa.manifestDescription,
     start_url: "/",
     scope: "/",
     display: "standalone",

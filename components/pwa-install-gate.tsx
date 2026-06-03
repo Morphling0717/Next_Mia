@@ -9,6 +9,7 @@ import {
   CloseIcon as X,
   AddRectangleIcon as PlusSquare,
 } from "tdesign-icons-react";
+import type { EditableSiteConfig } from "@/lib/site-config";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -62,7 +63,11 @@ function detectIosDevice(): boolean {
   return /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
 }
 
-export function PwaInstallGate() {
+type PwaInstallGateProps = {
+  texts: EditableSiteConfig["pwa"];
+};
+
+export function PwaInstallGate({ texts }: PwaInstallGateProps) {
   const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -182,12 +187,12 @@ export function PwaInstallGate() {
             {/* 文字信息 */}
             <div className="flex-1 pt-1">
               <h3 className="text-[15px] font-semibold leading-tight text-(--mia-ink) tracking-wide font-display">
-                获取 星眠Mia App
+                {texts.installTitle}
               </h3>
               <p className="mt-1 text-[12px] leading-relaxed text-(--mia-warm-grey-deep)">
                 {deferredPrompt
-                  ? "云端教堂上身体验，直接添加至桌面"
-                  : "在 Safari 点击分享并添加到主屏幕"}
+                  ? texts.installDescription
+                  : texts.installIosDescription}
               </p>
             </div>
 
@@ -208,14 +213,14 @@ export function PwaInstallGate() {
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-(--mia-gold) py-3 text-[14px] font-semibold text-(--mia-cream) shadow-[0_8px_22px_-10px_rgba(196,169,110,0.55)] transition-transform hover:bg-(--mia-gold-deep) active:scale-[0.98]"
               >
                 <Download className="h-4 w-4" />
-                立即安装
+                {texts.installButton}
               </button>
             ) : (
               <div className="flex items-center justify-center gap-2 rounded-xl border border-(--mia-warm-grey)/50 bg-(--mia-cream-soft)/85 py-3 text-[13px] font-medium text-(--mia-ink)">
-                <span>1. 底部点击</span>
+                <span>{texts.iosStepOne}</span>
                 <Share2 className="h-4 w-4 text-(--mia-gold-deep)" />
                 <span className="mx-1 opacity-50">|</span>
-                <span>2. 选择</span>
+                <span>{texts.iosStepTwo}</span>
                 <PlusSquare className="h-4 w-4 text-(--mia-gold-deep)" />
               </div>
             )}

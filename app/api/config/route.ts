@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { get, all } from '@/lib/db';
 import { getDefaultTopic, listTopics } from '@/lib/mail-topics';
+import { sanitizeEditableSiteConfig, withRuntimeSiteConfig } from '@/lib/site-config';
 
 type SiteConfigRow = {
   value: string;
@@ -30,27 +31,10 @@ export async function GET() {
       ['site_config']
     );
 
-    const siteConfig = configRow 
-      ? JSON.parse(configRow.value) 
-      : {
-          hero: {},
-          model: {},
-          live: {},
-          gallery: {},
-          api: {},
-          song_ui: {
-            categories: [
-              { id: "all", label: "全曲" },
-              { id: "shengyong", label: "圣咏" },
-              { id: "liuxing", label: "流行" },
-              { id: "gufeng", label: "古风" },
-              { id: "yingyu", label: "英文" },
-              { id: "riyu", label: "日文" },
-            ]
-          },
-          footer: {},
-          mail: {},
-        };
+    const editableConfig = configRow
+      ? sanitizeEditableSiteConfig(JSON.parse(configRow.value))
+      : sanitizeEditableSiteConfig({});
+    let siteConfig = withRuntimeSiteConfig(editableConfig);
 
     // -------------------------------------------------------------
     // Mail 派生字段（方案 §6.3）
@@ -62,7 +46,7 @@ export async function GET() {
     // -------------------------------------------------------------
     try {
       const activeTopics = await listTopics({ onlyPublicActive: true });
-      siteConfig.activeTopics = activeTopics.map((t) => ({
+      const runtimeActiveTopics = activeTopics.map((t) => ({
         slug: t.slug,
         title: t.title,
         description: t.description,
@@ -70,11 +54,13 @@ export async function GET() {
         endsAt: t.endsAt,
       }));
       const defaultTopic = await getDefaultTopic();
-      siteConfig.mailEnabled = defaultTopic ? defaultTopic.isEnabled : true;
+      siteConfig = withRuntimeSiteConfig(editableConfig, {
+        activeTopics: runtimeActiveTopics,
+        mailEnabled: defaultTopic ? defaultTopic.isEnabled : true,
+      });
     } catch (e) {
       console.warn('[api/config] activeTopics/mailEnabled 派生失败:', e);
-      siteConfig.activeTopics = [];
-      siteConfig.mailEnabled = true;
+      siteConfig = withRuntimeSiteConfig(editableConfig);
     }
 
     // 从数据库获取所有歌曲

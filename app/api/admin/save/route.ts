@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { all, get, run } from '@/lib/db';
+import { sanitizeEditableSiteConfig } from '@/lib/site-config';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD?.trim();
 
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
 
       const nextVersion = currentVersion + 1;
       const updatedAt = new Date().toISOString();
-      const siteConfigJson = JSON.stringify(site_info);
+      const siteConfigJson = JSON.stringify(sanitizeEditableSiteConfig(site_info));
 
       await run(
         `INSERT INTO site_config (key, value, updated_at, version, updated_by)

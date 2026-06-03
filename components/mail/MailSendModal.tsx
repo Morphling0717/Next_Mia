@@ -12,7 +12,7 @@ import { playSentSfx } from "@/lib/mail-sfx";
 
 /**
  * 可从 admin 后台（/admin · 发信箱 tab）编辑的访客侧文案。
- * 每个字段都有代码里的 fallback，后台留空时走默认值。
+ * 默认值由共享 site_config schema 合并，组件内不再维护可见文案 fallback。
  */
 export type MailTexts = {
   disabledBanner?: string;
@@ -30,7 +30,7 @@ export type MailTexts = {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** 从 /api/config 读到的 siteConfig.mail；传 undefined 则全部走默认。 */
+  /** 从 /api/config 读到的 siteConfig.mail。 */
   texts?: MailTexts;
   enabled?: boolean;
 };
@@ -149,7 +149,7 @@ export function MailSendModal({ open, onOpenChange, texts, enabled }: Props) {
             {isDisabled && (
               <div className="mb-4 flex items-center justify-center gap-2 rounded-xl border border-(--mia-rose)/55 bg-(--mia-rose)/10 p-4 text-center font-display text-sm text-(--mia-rose) shadow-[0_8px_22px_-10px_rgba(184,80,106,0.4)] backdrop-blur-md">
                 <RadioIcon className="h-4 w-4 shrink-0" aria-hidden />
-                <span>{texts?.disabledBanner || "发信箱暂时关闭，稍后再来投递吧 ~"}</span>
+                <span>{texts?.disabledBanner ?? ""}</span>
               </div>
             )}
 
@@ -158,17 +158,17 @@ export function MailSendModal({ open, onOpenChange, texts, enabled }: Props) {
               aria-disabled={isDisabled}
             >
               <WindChimeSender
-                title={texts?.senderTitle || "MAIL_BOX"}
-                tagline={texts?.senderTagline || "在云端教堂御前，把想对 Mia 说的话匿名上交"}
-                statusOpenLabel={texts?.statusOpen || "ONLINE"}
-                statusPausedLabel={texts?.statusPaused || "OFFLINE"}
-                pausedMessage={texts?.pausedMessage || "OFFLINE · 云端教堂发信箱暂时关闭，稍后再来投递吧 ~"}
+                title={texts?.senderTitle ?? ""}
+                tagline={texts?.senderTagline ?? ""}
+                statusOpenLabel={texts?.statusOpen ?? ""}
+                statusPausedLabel={texts?.statusPaused ?? ""}
+                pausedMessage={texts?.pausedMessage ?? ""}
                 collectNickname
                 collectLinkUrl
-                placeholder={texts?.placeholderText || "在这里写下你想说的话…"}
-                nicknamePlaceholder={texts?.placeholderNickname || "称呼（可选）"}
-                linkPlaceholder={texts?.placeholderLink || "B站 / X / 外站链接（可选）"}
-                successMessage={texts?.successMessage || "已送达云端教堂 · Mia 会在直播时读到 ~"}
+                placeholder={texts?.placeholderText ?? ""}
+                nicknamePlaceholder={texts?.placeholderNickname ?? ""}
+                linkPlaceholder={texts?.placeholderLink ?? ""}
+                successMessage={texts?.successMessage ?? ""}
                 rateLimit={{
                   max: 3,
                   windowMs: 60_000,

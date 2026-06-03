@@ -7,7 +7,12 @@
 
 import { all, get } from '@/lib/db';
 import { getDefaultTopic, listTopics } from '@/lib/mail-topics';
-import type { ActiveTopicSummary } from '@/components/mail/mail-topic-types';
+import {
+  sanitizeEditableSiteConfig,
+  withRuntimeSiteConfig,
+  type EditableSiteConfig,
+  type RuntimeSiteConfig,
+} from '@/lib/site-config';
 
 export type SongRecord = {
   category: string;
@@ -15,45 +20,11 @@ export type SongRecord = {
   artist: string;
 };
 
-export type SiteConfigDocument = {
-  hero?: Record<string, unknown>;
-  model?: Record<string, unknown>;
-  live?: Record<string, unknown>;
-  gallery?: Record<string, unknown>;
-  api?: Record<string, unknown>;
-  song_ui?: Record<string, unknown>;
-  footer?: Record<string, unknown>;
-  mail?: Record<string, unknown>;
-  notifications?: Record<string, unknown>;
-  videos?: Record<string, unknown>;
-  activeTopics?: ActiveTopicSummary[];
-  mailEnabled?: boolean;
-  [key: string]: unknown;
-};
-
 export type InitialSiteData = {
-  siteConfig: SiteConfigDocument;
+  siteConfig: RuntimeSiteConfig;
   configVersion: number;
   configUpdatedAt: string | null;
   songs: SongRecord[];
-};
-
-const DEFAULT_SITE_CONFIG: SiteConfigDocument = {
-  hero: {},
-  model: {},
-  live: {},
-  gallery: {},
-  api: {},
-  song_ui: {
-    categories: [
-      { id: 'all', label: 'ALL' },
-      { id: 'pop', label: '流行' },
-      { id: 'gufeng', label: '古风' },
-      { id: 'english', label: '英文' },
-    ],
-  },
-  footer: {},
-  mail: {},
 };
 
 type SiteConfigRow = {
@@ -62,25 +33,44 @@ type SiteConfigRow = {
   version: number | null;
 };
 
+async function readSiteConfigRow(): Promise<SiteConfigRow | undefined> {
+  return get<SiteConfigRow>(
+    'SELECT value, updated_at, version FROM site_config WHERE key = ?',
+    ['site_config'],
+  );
+}
+
+export async function loadEditableSiteConfig(): Promise<EditableSiteConfig> {
+  try {
+    const row = await readSiteConfigRow();
+    if (!row) return sanitizeEditableSiteConfig({});
+    try {
+      return sanitizeEditableSiteConfig(JSON.parse(row.value));
+    } catch (parseErr) {
+      console.warn('[site-data] site_config JSON parse failed:', parseErr);
+      return sanitizeEditableSiteConfig({});
+    }
+  } catch (err) {
+    console.warn('[site-data] read editable site_config failed:', err);
+    return sanitizeEditableSiteConfig({});
+  }
+}
+
 /**
  * 读取整套首页 SSR 初始数据。任何子项失败都不应阻塞整体渲染——
  * 失败时回退到 DEFAULT_SITE_CONFIG / 空数组，让 client 端的 /api/config 轮询继续兜底。
  */
 export async function loadInitialSiteData(): Promise<InitialSiteData> {
-  let siteConfig: SiteConfigDocument = { ...DEFAULT_SITE_CONFIG };
+  let editableConfig = sanitizeEditableSiteConfig({});
   let configVersion = 0;
   let configUpdatedAt: string | null = null;
   let songs: SongRecord[] = [];
 
   try {
-    const row = await get<SiteConfigRow>(
-      'SELECT value, updated_at, version FROM site_config WHERE key = ?',
-      ['site_config'],
-    );
+    const row = await readSiteConfigRow();
     if (row) {
       try {
-        const parsed = JSON.parse(row.value) as SiteConfigDocument;
-        siteConfig = { ...DEFAULT_SITE_CONFIG, ...parsed };
+        editableConfig = sanitizeEditableSiteConfig(JSON.parse(row.value));
       } catch (parseErr) {
         console.warn('[site-data] site_config JSON parse failed:', parseErr);
       }
@@ -92,9 +82,10 @@ export async function loadInitialSiteData(): Promise<InitialSiteData> {
   }
 
   // mail 派生字段（与 /api/config 行为一致）
+  let runtimeConfig: RuntimeSiteConfig = withRuntimeSiteConfig(editableConfig);
   try {
     const activeTopics = await listTopics({ onlyPublicActive: true });
-    siteConfig.activeTopics = activeTopics.map((t) => ({
+    const runtimeActiveTopics = activeTopics.map((t) => ({
       slug: t.slug,
       title: t.title,
       description: t.description,
@@ -102,11 +93,13 @@ export async function loadInitialSiteData(): Promise<InitialSiteData> {
       endsAt: t.endsAt,
     }));
     const defaultTopic = await getDefaultTopic();
-    siteConfig.mailEnabled = defaultTopic ? defaultTopic.isEnabled : true;
+    runtimeConfig = withRuntimeSiteConfig(editableConfig, {
+      activeTopics: runtimeActiveTopics,
+      mailEnabled: defaultTopic ? defaultTopic.isEnabled : true,
+    });
   } catch (err) {
     console.warn('[site-data] derive mail fields failed:', err);
-    siteConfig.activeTopics = [];
-    siteConfig.mailEnabled = true;
+    runtimeConfig = withRuntimeSiteConfig(editableConfig);
   }
 
   try {
@@ -118,7 +111,7 @@ export async function loadInitialSiteData(): Promise<InitialSiteData> {
   }
 
   return {
-    siteConfig,
+    siteConfig: runtimeConfig,
     configVersion,
     configUpdatedAt,
     songs,

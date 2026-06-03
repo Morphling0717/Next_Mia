@@ -14,7 +14,7 @@ const TABS: Array<{ id: AdminTabId; label: string; icon?: "folder" }> = [
   { id: "live", label: "直播 (Live)" },
   { id: "video", label: "视频墙 (Video)" },
   { id: "footer", label: "底部 (Footer)" },
-  { id: "notifications", label: "通知 (Notifications)" },
+  { id: "system", label: "系统文案" },
   { id: "videos", label: "视频标题 (Titles)" },
   { id: "songs", label: "歌单 (Songs)" },
   { id: "mail", label: "发信箱 (Mail)" },

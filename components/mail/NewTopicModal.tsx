@@ -214,7 +214,7 @@ export function NewTopicModal({ open, onClose, authHeader, onCreated }: Props) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={64}
-                placeholder="🎂 Uli 生日快乐来信 2026"
+                placeholder="🎂 Mia 生日快乐来信 2026"
                 className="w-full rounded-lg border border-(--mia-warm-grey) bg-white/70 px-3 py-2 font-sans text-sm text-(--mia-ink) placeholder:text-(--mia-warm-grey-deep)/70 outline-none transition focus:border-(--mia-gold) focus:bg-white focus:ring-2 focus:ring-(--mia-gold)/20"
               />
               {titleError && <ErrLine msg={titleError} />}
