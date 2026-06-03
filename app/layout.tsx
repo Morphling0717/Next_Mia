@@ -187,10 +187,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     icons: {
       icon: [
-        { url: "/favicon.ico?v=2", sizes: "any" },
+        { url: "/favicon.ico?v=3", sizes: "any" },
         { url: "/app.jpg", type: "image/jpeg", sizes: "402x402" },
       ],
-      shortcut: "/favicon.ico?v=2",
+      shortcut: "/favicon.ico?v=3",
       apple: [
         // iOS 添加到主屏幕标准入口；402x402 jpg 在 iOS 12+ 上能正确呈现。
         { url: "/app.jpg", sizes: "180x180", type: "image/jpeg" },
