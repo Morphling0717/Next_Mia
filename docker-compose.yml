@@ -17,3 +17,22 @@ services:
       - ./data:/app/data
       - ./public/memes:/app/public/memes
       - ./public/pic:/app/public/pic
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: mia-caddy
+    restart: unless-stopped
+    depends_on:
+      - website
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

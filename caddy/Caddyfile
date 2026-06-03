@@ -1,0 +1,4 @@
+miasleep.cn, www.miasleep.cn {
+	encode zstd gzip
+	reverse_proxy website:3000
+}
