@@ -226,26 +226,6 @@ export default function AdminDashboard() {
     });
   };
 
-  const updateCreditPerson = (
-    creditIndex: number,
-    personIndex: number,
-    key: string,
-    val: string
-  ) => {
-    setConfig((prev) => {
-      const newConfig = { ...prev };
-      const person =
-        newConfig.model?.credits?.[creditIndex]?.val?.[personIndex];
-      if (person) {
-        newConfig.model?.credits?.[creditIndex]?.val?.splice(personIndex, 1, {
-          ...person,
-          [key]: val,
-        });
-      }
-      return newConfig;
-    });
-  };
-
   // ===== TAB SWITCHING =====
   const switchTab = async (tab: AdminTabId) => {
     if (tab === "assets") {
@@ -706,7 +686,6 @@ export default function AdminDashboard() {
           updateArraySimple={updateArraySimple}
           addArrayItem={addArrayItem}
           removeArrayItem={removeArrayItem}
-          updateCreditPerson={updateCreditPerson}
           addSongRow={addSongRow}
           removeSong={removeSong}
           updateSong={updateSong}

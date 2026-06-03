@@ -1,16 +1,7 @@
-export interface DetailItem {
+export interface ExpressionItem {
   id: string;
-  img: string;
-}
-
-export interface CreditPerson {
-  name: string;
-  link: string;
-}
-
-export interface CreditInfo {
-  label: string;
-  val: CreditPerson[];
+  face: string;
+  full: string;
 }
 
 export interface SongCategory {
@@ -52,8 +43,7 @@ export interface SiteConfig {
     titlePrefix?: string;
     titleSuffix?: string;
     syncRate?: string;
-    details?: DetailItem[];
-    credits?: CreditInfo[];
+    expressions?: ExpressionItem[];
   };
   live?: {
     title?: string;

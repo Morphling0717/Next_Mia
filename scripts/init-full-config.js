@@ -26,7 +26,19 @@ const defaultConfig = {
     statusText: "项目状态: 见习",
     followersText: "本周访客:",
   },
-  model: { titlePrefix: "MIA", titleSuffix: "_DATA" },
+  model: {
+    titlePrefix: "MIA",
+    titleSuffix: "_DATA",
+    syncRate: "SYNC_RATE: 100%",
+    expressions: [
+      { id: "表情一", face: "pic/face/1.webp", full: "pic/full/1.webp" },
+      { id: "表情二", face: "pic/face/2.webp", full: "pic/full/2.webp" },
+      { id: "表情三", face: "pic/face/3.webp", full: "pic/full/3.webp" },
+      { id: "表情四", face: "pic/face/4.webp", full: "pic/full/4.webp" },
+      { id: "表情五", face: "pic/face/5.webp", full: "pic/full/5.webp" },
+      { id: "表情六", face: "pic/face/6.webp", full: "pic/full/6.webp" },
+    ],
+  },
   live: {
     title: "直播状态",
     roomId: "",
@@ -46,7 +58,7 @@ const defaultConfig = {
     ],
   },
   gallery: { title: "本地视频", titlePrefix: "MIA", titleSuffix: "_ARCHIVE", datePrefix: "DATE //" },
-  api: { bilibili: "https://bili-proxy-mia.vercel.app/api" },
+  api: { bilibili: "https://1377297588-5v9c60xnw1.ap-guangzhou.tencentscf.com/?mid=3706975546248092" },
   song_ui: {
     titlePrefix: "SONG",
     titleSuffix: "_BOOK",

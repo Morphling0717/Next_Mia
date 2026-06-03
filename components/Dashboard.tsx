@@ -26,19 +26,10 @@ export interface VideoItem {
   play: string | number;
 }
 
-export interface DetailItem {
+export interface ExpressionItem {
   id: string;
-  img: string;
-}
-
-export interface CreditItem {
-  name: string;
-  link: string;
-}
-
-export interface CreditInfo {
-  label: string;
-  val: CreditItem[];
+  face: string;
+  full: string;
 }
 
 export interface LinkItem {
@@ -176,6 +167,16 @@ const HeroSection: React.FC<{ stats: string | number; config?: any }> = ({ stats
   );
 };
 
+// 无配置时的占位表情（仅用于预览排版，配置后由后台数据覆盖）
+const FALLBACK_EXPRESSIONS: ExpressionItem[] = [
+  { id: '表情一', face: '', full: '' },
+  { id: '表情二', face: '', full: '' },
+  { id: '表情三', face: '', full: '' },
+  { id: '表情四', face: '', full: '' },
+  { id: '表情五', face: '', full: '' },
+  { id: '表情六', face: '', full: '' },
+];
+
 // --- 2. Model Breakdown ---
 const ModelBreakdown: React.FC<{ avatarSrc: string; config?: any; assetVersion?: number }> = ({
   avatarSrc,
@@ -183,8 +184,19 @@ const ModelBreakdown: React.FC<{ avatarSrc: string; config?: any; assetVersion?:
   assetVersion,
 }) => {
   const cfg = getConfig(config).model || {};
-  const details: DetailItem[] = cfg.details || [];
-  const credits: CreditInfo[] = cfg.credits || [];
+  const configured: ExpressionItem[] = cfg.expressions || [];
+  const expressions: ExpressionItem[] =
+    configured.length > 0 ? configured : FALLBACK_EXPRESSIONS;
+
+  const [selected, setSelected] = useState(0);
+  const safeIndex = Math.min(selected, expressions.length - 1);
+  const current = expressions[safeIndex];
+
+  const fullSrc = current?.full
+    ? `/${withAssetVersion(current.full, assetVersion)}`
+    : avatarSrc
+      ? `/${avatarSrc}`
+      : '';
 
   return (
     <section id="model-section" className="min-h-auto md:min-h-[80vh] w-full pt-12 pb-6 md:py-20 relative">
@@ -199,71 +211,123 @@ const ModelBreakdown: React.FC<{ avatarSrc: string; config?: any; assetVersion?:
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 h-auto lg:h-200 items-center">
-          <div className="lg:col-span-3 flex flex-row lg:flex-col gap-2 lg:gap-6 h-auto lg:h-full justify-center order-3 lg:order-1 w-full">
-            {details.map((item: DetailItem) => (
-              <GlassCard
-                key={item.id}
-                className="flex-1 w-full h-24 md:h-32 lg:h-auto group interactive relative overflow-hidden bg-(--mia-cream-soft)"
-              >
-                <img
-                  src={`/${withAssetVersion(item.img, assetVersion)}`}
-                  alt={item.id}
-                  className="absolute top-1/2 left-0 w-full h-auto -translate-y-1/2 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition duration-700"
-                  onError={(e: React.SyntheticEvent<HTMLImageElement>) =>
-                    ((e.target as HTMLImageElement).style.display = 'none')
-                  }
-                />
-                <div className="absolute inset-0 bg-linear-to-t from-(--mia-cream)/95 via-(--mia-cream)/40 to-transparent opacity-90 group-hover:opacity-50 transition-opacity"></div>
-                <div className="absolute inset-0 z-10 flex items-start justify-center pt-2 text-(--mia-gold-deep) font-display tracking-widest text-[9px] md:text-sm lg:text-xl group-hover:text-(--mia-ink) transition-colors text-center leading-tight">
-                  {item.id}
-                </div>
-              </GlassCard>
-            ))}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 h-auto lg:h-200 items-center justify-center">
+          {/* 左侧：前3个表情缩略图 */}
+          <div className="order-2 lg:order-1 grid grid-cols-3 lg:grid-cols-1 lg:grid-rows-3 gap-3 lg:gap-5 h-auto lg:h-full w-full lg:w-auto shrink-0 place-content-center justify-items-center">
+            {expressions.slice(0, 3).map((exp, i) => {
+              const faceSrc = exp.face
+                ? `/${withAssetVersion(exp.face, assetVersion)}`
+                : '';
+              const active = i === safeIndex;
+              return (
+                <button
+                  key={exp.id || i}
+                  type="button"
+                  onClick={() => setSelected(i)}
+                  aria-pressed={active}
+                  className={`group interactive relative h-20 w-20 md:h-24 md:w-24 lg:h-full lg:w-full aspect-square overflow-hidden rounded-xl border bg-(--mia-cream-soft) transition duration-300 ${
+                    active
+                      ? 'border-(--mia-gold) shadow-[0_0_18px_rgba(196,169,110,0.45)] ring-2 ring-(--mia-gold)/40'
+                      : 'border-(--mia-warm-grey) hover:border-(--mia-gold)/60'
+                  }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center bg-(--mia-cream-soft) text-(--mia-warm-grey-deep) font-display text-[9px] tracking-widest">
+                    FACE
+                  </div>
+                  {faceSrc && (
+                    <img
+                      src={faceSrc}
+                      alt={exp.id || `expression-${i + 1}`}
+                      className="absolute inset-0 z-1 h-full w-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition duration-700"
+                      onError={(e: React.SyntheticEvent<HTMLImageElement>) =>
+                        ((e.target as HTMLImageElement).style.display = 'none')
+                      }
+                    />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 z-2 bg-linear-to-t from-(--mia-cream)/95 to-transparent px-1 pb-1 pt-3 text-center font-display text-[9px] md:text-[10px] tracking-widest text-(--mia-gold-deep) group-hover:text-(--mia-ink) transition-colors leading-tight truncate">
+                    {exp.id || `表情${i + 1}`}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="lg:col-span-6 relative h-full flex items-center justify-center group order-2 lg:order-2">
+          {/* 中间：立绘大图（淡入淡出切换） */}
+          <div className="order-1 lg:order-2 relative h-[50vh] lg:h-full flex flex-1 items-center justify-center group w-full">
             <div className="absolute bottom-10 w-3/4 h-20 bg-(--mia-gold)/15 blur-xl rounded-full scale-x-0 group-hover:scale-x-100 transition duration-1000"></div>
             <div className="relative w-full h-full flex items-center justify-center py-4">
               <AnimatePresence mode="wait">
-                <motion.img
-                  key={avatarSrc}
-                  src={`/${avatarSrc}`}
-                  initial={{ opacity: 0, scale: 0.95, filter: 'blur(8px) brightness(1.4)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px) brightness(1)' }}
-                  exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px) brightness(0.8)' }}
-                  transition={{ type: 'tween', duration: 0.4, ease: 'easeOut' }}
-                  className="max-h-[50vh] md:max-h-212.5 w-auto object-contain drop-shadow-[0_0_20px_rgba(196,169,110,0.35)] hover:scale-[1.02] relative z-10"
-                  alt="Mia"
-                  onError={(e: React.SyntheticEvent<HTMLImageElement>) =>
-                    ((e.target as HTMLImageElement).style.display = 'none')
-                  }
-                />
+                {fullSrc ? (
+                  <motion.img
+                    key={fullSrc}
+                    src={fullSrc}
+                    initial={{ opacity: 0, scale: 0.95, filter: 'blur(8px) brightness(1.4)' }}
+                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px) brightness(1)' }}
+                    exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px) brightness(0.8)' }}
+                    transition={{ type: 'tween', duration: 0.4, ease: 'easeOut' }}
+                    className="max-h-[50vh] md:max-h-212.5 w-auto object-contain drop-shadow-[0_0_20px_rgba(196,169,110,0.35)] relative z-10"
+                    alt={current?.id || 'Mia'}
+                    onError={(e: React.SyntheticEvent<HTMLImageElement>) =>
+                      ((e.target as HTMLImageElement).style.display = 'none')
+                    }
+                  />
+                ) : (
+                  <motion.div
+                    key={`placeholder-${safeIndex}`}
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.03 }}
+                    transition={{ type: 'tween', duration: 0.4, ease: 'easeOut' }}
+                    className="flex h-[42vh] md:h-150 w-full max-w-md flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-(--mia-gold)/50 bg-(--mia-cream-soft)/60 text-(--mia-gold-deep)"
+                  >
+                    <div className="font-display text-sm tracking-[0.3em]">立绘大图</div>
+                    <div className="font-serif-cn text-xs text-(--mia-warm-grey-deep)">
+                      {current?.id || `表情${safeIndex + 1}`} · 暂无图片
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
           </div>
 
-          <div className="lg:col-span-3 flex flex-row lg:flex-col justify-around lg:justify-center gap-2 lg:gap-8 lg:pl-8 lg:border-l border-(--mia-warm-grey) h-full order-1 lg:order-3 w-full mb-4 lg:mb-0">
-            {credits.map((info: CreditInfo) => (
-              <div key={info.label} className="group flex flex-col items-center lg:items-start">
-                <div className="text-[10px] text-(--mia-gold-deep) font-display mb-1 tracking-widest">
-                  {'✚ '} {info.label}
-                </div>
-                <h3 className="font-serif-cn text-sm md:text-2xl font-bold text-(--mia-ink) italic text-center lg:text-left leading-tight">
-                  {info.val.map((item: CreditItem, i: number) => (
-                    <a
-                      key={i}
-                      href={item.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block hover:text-(--mia-gold) transition-colors cursor-pointer"
-                    >
-                      {item.name}
-                    </a>
-                  ))}
-                </h3>
-              </div>
-            ))}
+          {/* 右侧：后3个表情缩略图 */}
+          <div className="order-3 lg:order-3 grid grid-cols-3 lg:grid-cols-1 lg:grid-rows-3 gap-3 lg:gap-5 h-auto lg:h-full w-full lg:w-auto shrink-0 place-content-center justify-items-center">
+            {expressions.slice(3, 6).map((exp, i) => {
+              const faceSrc = exp.face
+                ? `/${withAssetVersion(exp.face, assetVersion)}`
+                : '';
+              const active = i + 3 === safeIndex;
+              return (
+                <button
+                  key={exp.id || i + 3}
+                  type="button"
+                  onClick={() => setSelected(i + 3)}
+                  aria-pressed={active}
+                  className={`group interactive relative h-20 w-20 md:h-24 md:w-24 lg:h-full lg:w-full aspect-square overflow-hidden rounded-xl border bg-(--mia-cream-soft) transition duration-300 ${
+                    active
+                      ? 'border-(--mia-gold) shadow-[0_0_18px_rgba(196,169,110,0.45)] ring-2 ring-(--mia-gold)/40'
+                      : 'border-(--mia-warm-grey) hover:border-(--mia-gold)/60'
+                  }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center bg-(--mia-cream-soft) text-(--mia-warm-grey-deep) font-display text-[9px] tracking-widest">
+                    FACE
+                  </div>
+                  {faceSrc && (
+                    <img
+                      src={faceSrc}
+                      alt={exp.id || `expression-${i + 4}`}
+                      className="absolute inset-0 z-1 h-full w-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition duration-700"
+                      onError={(e: React.SyntheticEvent<HTMLImageElement>) =>
+                        ((e.target as HTMLImageElement).style.display = 'none')
+                      }
+                    />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 z-2 bg-linear-to-t from-(--mia-cream)/95 to-transparent px-1 pb-1 pt-3 text-center font-display text-[9px] md:text-[10px] tracking-widest text-(--mia-gold-deep) group-hover:text-(--mia-ink) transition-colors leading-tight truncate">
+                    {exp.id || `表情${i + 4}`}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

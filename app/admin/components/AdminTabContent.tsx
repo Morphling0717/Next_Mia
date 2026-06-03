@@ -24,7 +24,6 @@ import {
   SearchIcon as Search,
   DeleteIcon as Trash2,
   EditIcon as Type,
-  UserIcon as Users,
   VideoIcon as Video,
   CloseIcon as X,
   CloudUploadIcon as UploadCloud,
@@ -45,7 +44,6 @@ interface AdminTabContentProps {
   updateArraySimple: (section: string, arrayKey: string, index: number, val: unknown) => void;
   addArrayItem: (section: string, arrayKey: string, defaultValue: unknown) => void;
   removeArrayItem: (section: string, arrayKey: string, index: number) => void;
-  updateCreditPerson: (creditIndex: number, personIndex: number, key: string, val: string) => void;
   addSongRow: () => void;
   removeSong: (i: number) => void;
   updateSong: (i: number, key: string, val: string) => void;
@@ -76,7 +74,6 @@ export function AdminTabContent(props: AdminTabContentProps) {
     updateArraySimple,
     addArrayItem,
     removeArrayItem,
-    updateCreditPerson,
     addSongRow,
     removeSong,
     updateSong,
@@ -123,35 +120,40 @@ export function AdminTabContent(props: AdminTabContentProps) {
             </div>
           </div>
           <div className="card">
-            <div className="section-title"><Image className="w-4 h-4" /> 详情图 (Details)</div>
+            <div className="section-title"><Image className="w-4 h-4" /> 表情立绘 (Expressions)</div>
+            <p className="text-xs text-gray-400 mb-4">
+              每个表情两张图：脸部小图（左侧缩略，放 <code>pic/face/</code>）+ 立绘大图（右侧大图，放 <code>pic/full/</code>）。建议共 6 个表情。
+            </p>
             <div className="grid gap-4">
-              {(config.model?.details || []).map((d, i) => (
-                <div key={i} className="flex gap-2 items-center bg-(--mia-cream-soft)/70 border border-(--mia-warm-grey)/40 p-3 rounded">
-                  <span className="text-sm font-mono w-8">#{i + 1}</span>
-                  <input type="text" className="input-dark w-32 text-sm" placeholder="ID" value={d.id} onChange={(e) => updateArray("model", "details", i, "id", e.target.value)} />
-                  <input type="text" className="input-dark flex-1 text-sm" placeholder="图片路径 (pic/...)" value={d.img} onChange={(e) => updateArray("model", "details", i, "img", e.target.value)} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card">
-            <div className="section-title"><Users className="w-4 h-4" /> 制作人员 (Credits)</div>
-            <div className="space-y-4">
-              {(config.model?.credits || []).map((c, i) => (
-                <div key={i} className="bg-(--mia-cream-soft)/70 p-3 rounded border border-(--mia-warm-grey)/40">
-                  <div className="flex justify-between mb-2">
-                    <input type="text" className="input-dark w-1/3 text-xs font-bold text-(--mia-gold-deep)" placeholder="分类标签" value={c.label} onChange={(e) => updateArray("model", "credits", i, "label", e.target.value)} />
+              {(config.model?.expressions || []).map((exp, i) => (
+                <div key={i} className="bg-(--mia-cream-soft)/70 border border-(--mia-warm-grey)/40 p-3 rounded">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-mono w-8">#{i + 1}</span>
+                    <input type="text" className="input-dark w-40 text-sm" placeholder="表情名称" value={exp.id} onChange={(e) => updateArray("model", "expressions", i, "id", e.target.value)} />
+                    <button type="button" className="ml-auto text-red-400 hover:text-red-500" onClick={() => removeArrayItem("model", "expressions", i)} title="删除该表情">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="text-xs text-gray-500 mb-2 pl-4">人员 / 网址</div>
-                  {c.val.map((person, pi) => (
-                    <div key={pi} className="flex gap-2 mb-2 pl-4">
-                      <input type="text" className="input-dark w-32 text-sm" placeholder="人员名字" value={person.name} onChange={(e) => updateCreditPerson(i, pi, "name", e.target.value)} />
-                      <input type="text" className="input-dark flex-1 text-sm" placeholder="https://example.com (可留空)" value={person.link} onChange={(e) => updateCreditPerson(i, pi, "link", e.target.value)} />
+                  <div className="grid gap-2 pl-10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 w-16">脸部小图</span>
+                      <input type="text" className="input-dark flex-1 text-sm" placeholder="pic/face/..." value={exp.face} onChange={(e) => updateArray("model", "expressions", i, "face", e.target.value)} />
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 w-16">立绘大图</span>
+                      <input type="text" className="input-dark flex-1 text-sm" placeholder="pic/full/..." value={exp.full} onChange={(e) => updateArray("model", "expressions", i, "full", e.target.value)} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+            <button
+              type="button"
+              className="mt-4 flex items-center gap-2 px-3 py-2 text-sm rounded border border-(--mia-gold)/50 text-(--mia-gold-deep) hover:bg-(--mia-gold)/10"
+              onClick={() => addArrayItem("model", "expressions", { id: "", face: "", full: "" })}
+            >
+              <Plus className="w-4 h-4" /> 添加表情
+            </button>
           </div>
         </>
       )}
