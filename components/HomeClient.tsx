@@ -174,12 +174,7 @@ export default function HomeClient({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const apiUrl = siteConfig?.api?.bilibili;
-        if (!apiUrl) {
-          setStats(siteConfig.hero.statsPendingText);
-          return;
-        }
-        const data = await fetchBilibiliData(apiUrl);
+        const data = await fetchBilibiliData('/api/bilibili');
         if (data.user) {
           setStats(data.user.fans ?? siteConfig.hero.statsPendingText);
           setLiveStatus(Boolean(data.user.is_live));

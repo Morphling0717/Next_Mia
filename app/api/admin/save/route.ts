@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { all, get, run } from '@/lib/db';
+import { verifyAdminRequest } from '@/lib/admin-auth';
 import { sanitizeEditableSiteConfig } from '@/lib/site-config';
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD?.trim();
 
 type SiteConfigRow = {
   value: string;
@@ -27,25 +26,14 @@ type SaveBody = {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!ADMIN_PASSWORD) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: '服务器未配置 ADMIN_PASSWORD 环境变量',
-        },
-        { status: 500 },
-      );
-    }
-
     const body = (await request.json().catch(() => null)) as SaveBody | null;
 
     if (!body) {
       return NextResponse.json({ success: false, message: 'No data received' });
     }
 
-    if (body.password !== ADMIN_PASSWORD) {
-      return NextResponse.json({ success: false, message: '密码错误，拒绝访问' });
-    }
+    const auth = await verifyAdminRequest(request, body.password);
+    if (auth) return auth;
 
     const editorName =
       typeof body.editor_name === 'string' ? body.editor_name.trim() : '';

@@ -39,28 +39,32 @@ import { ArchivedTopicsDrawer } from "@/components/mail/ArchivedTopicsDrawer";
 import { ArchiveConfirmModal } from "@/components/mail/ArchiveConfirmModal";
 import type { Topic } from "@/components/mail/mail-topic-types";
 import { formatBeijing } from "@/components/mail/mail-time";
-import {
-  DEFAULT_BILIBILI_API_URL,
-  fetchBilibiliData,
-} from "@/lib/bilibili-api";
-
-const PWD_STORAGE_KEY = "mia:mail:pwd";
+import { fetchBilibiliData } from "@/lib/bilibili-api";
 
 export default function MailPage() {
-  const [password, setPassword] = useState<string | null>(null);
+  const [isAuthed, setIsAuthed] = useState(false);
   const [pwdInput, setPwdInput] = useState("");
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdChecking, setPwdChecking] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
 
-  useEffect(() => {
-    const stored = window.sessionStorage.getItem(PWD_STORAGE_KEY);
-    if (stored) {
-      void verifyPassword(stored).then((ok) => {
-        if (ok) setPassword(stored);
-        else window.sessionStorage.removeItem(PWD_STORAGE_KEY);
-      });
+  const refreshMailSession = useCallback(async () => {
+    try {
+      const r = await fetch("/api/auth/session", { cache: "no-store" });
+      const j = (await r.json()) as { mail?: boolean };
+      setIsAuthed(Boolean(j.mail));
+    } catch {
+      setIsAuthed(false);
+    } finally {
+      setAuthChecking(false);
     }
   }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void refreshMailSession();
+    });
+  }, [refreshMailSession]);
 
   const onSubmitPwd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,10 +72,10 @@ export default function MailPage() {
     setPwdChecking(true);
     setPwdError(null);
     try {
-      const ok = await verifyPassword(pwdInput);
+      const ok = await loginMailSession(pwdInput);
       if (ok) {
-        window.sessionStorage.setItem(PWD_STORAGE_KEY, pwdInput);
-        setPassword(pwdInput);
+        setIsAuthed(true);
+        setPwdInput("");
       } else {
         setPwdError("ACCESS_DENIED · 密码错误");
       }
@@ -80,9 +84,13 @@ export default function MailPage() {
     }
   };
 
-  const onLogout = () => {
-    window.sessionStorage.removeItem(PWD_STORAGE_KEY);
-    setPassword(null);
+  const onLogout = async () => {
+    await fetch("/api/auth/session", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope: "mail" }),
+    }).catch(() => {});
+    setIsAuthed(false);
     setPwdInput("");
   };
 
@@ -113,10 +121,10 @@ export default function MailPage() {
           <p className="mt-3 font-display text-sm text-(--mia-gold-deep)/85">
             Mia 的匿名来信都挂在这里
           </p>
-          {password && (
+          {isAuthed && (
             <button
               type="button"
-              onClick={onLogout}
+              onClick={() => void onLogout()}
               className="mt-5 rounded-md border border-(--mia-gold)/45 bg-(--mia-cream-soft)/85 px-4 py-1.5 font-display text-xs text-(--mia-gold-deep) transition hover:bg-(--mia-gold)/12"
             >
               [ LOGOUT ]
@@ -124,7 +132,11 @@ export default function MailPage() {
           )}
         </header>
 
-        {!password ? (
+        {authChecking ? (
+          <div className="mx-auto w-full max-w-md rounded-2xl border border-(--mia-gold)/35 bg-(--mia-cream-soft)/90 p-8 text-center font-display text-xs tracking-[0.2em] text-(--mia-gold-deep)">
+            VERIFYING...
+          </div>
+        ) : !isAuthed ? (
           <PasswordGate
             value={pwdInput}
             onChange={setPwdInput}
@@ -133,7 +145,7 @@ export default function MailPage() {
             loading={pwdChecking}
           />
         ) : (
-          <MailContent password={password} onUnauthorized={onLogout} />
+          <MailContent onUnauthorized={() => void onLogout()} />
         )}
       </main>
     </>
@@ -190,12 +202,12 @@ function PasswordGate({
   );
 }
 
-async function verifyPassword(pwd: string): Promise<boolean> {
+async function loginMailSession(pwd: string): Promise<boolean> {
   try {
-    const r = await fetch("/api/mail/messages", {
-      method: "GET",
-      headers: { "x-mail-password": pwd },
-      cache: "no-store",
+    const r = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope: "mail", password: pwd }),
     });
     return r.ok;
   } catch {
@@ -209,10 +221,8 @@ type ListResponse = {
 };
 
 function MailContent({
-  password,
   onUnauthorized,
 }: {
-  password: string;
   onUnauthorized: () => void;
 }) {
   // ===== 主题 state =====
@@ -249,10 +259,7 @@ function MailContent({
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
 
-  const authHeader = useMemo(
-    () => ({ "x-mail-password": password }),
-    [password],
-  );
+  const authHeader = useMemo<Record<string, string>>(() => ({}), []);
 
   const handleAuthError = useCallback(
     (res: Response): boolean => {
@@ -599,23 +606,7 @@ function MailContent({
     let cancelled = false;
     (async () => {
       try {
-        // 优先读 site_config 里的 bili API 地址，失败时使用主站默认地址。
-        let biliUrl = DEFAULT_BILIBILI_API_URL;
-        try {
-          const c = await fetch("/api/config", { cache: "no-store" });
-          if (c.ok) {
-            const cj = (await c.json()) as {
-              site_config?: { api?: { bilibili?: string } };
-            };
-            if (cj.site_config?.api?.bilibili) {
-              biliUrl = cj.site_config.api.bilibili;
-            }
-          }
-        } catch {
-          /* 用 fallback */
-        }
-
-        const d = await fetchBilibiliData(biliUrl);
+        const d = await fetchBilibiliData("/api/bilibili");
         const face = d?.user?.face;
         if (!cancelled && face) {
           setPoster((p) => (p.avatarSrc ? p : { ...p, avatarSrc: face }));

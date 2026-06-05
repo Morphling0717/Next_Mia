@@ -6,6 +6,7 @@ import {
   clearLoginFailure,
   recordLoginFailure,
 } from './mail-rate-limit';
+import { verifySession } from './session-auth';
 
 /**
  * 常数时间字符串比较，防时序侧信道（timing attack）。
@@ -44,6 +45,10 @@ function getMailAdminPassword(): string | null {
  * `ADMIN_PASSWORD`。
  */
 export async function verifyMailAdmin(req: Request): Promise<NextResponse | null> {
+  if (verifySession(req, 'mail')) {
+    return null;
+  }
+
   const expected = getMailAdminPassword();
   if (!expected) {
     return NextResponse.json(
@@ -55,7 +60,7 @@ export async function verifyMailAdmin(req: Request): Promise<NextResponse | null
   const ip = getClientIp(req);
 
   // 先看这个 IP 是不是已经被锁
-  const lock = checkLoginLock(ip);
+  const lock = await checkLoginLock(`mail:${ip}`);
   if (lock.locked) {
     const retryAfterSec = Math.ceil(lock.retryAfterMs / 1000);
     return NextResponse.json(
@@ -88,13 +93,13 @@ export async function verifyMailAdmin(req: Request): Promise<NextResponse | null
   // 用 timing-safe 比较
   for (const c of candidates) {
     if (safeEqual(c, expected)) {
-      clearLoginFailure(ip);
+      await clearLoginFailure(`mail:${ip}`);
       return null;
     }
   }
 
   // 没有任何候选通过（包括没带密码）：记失败
-  const result = recordLoginFailure(ip);
+  const result = await recordLoginFailure(`mail:${ip}`);
   if (result.locked) {
     const retryAfterSec = Math.ceil(result.retryAfterMs / 1000);
     return NextResponse.json(
@@ -121,6 +126,7 @@ export async function verifyMailAdmin(req: Request): Promise<NextResponse | null
  * 请求体。
  */
 export function isMailAdminHeader(req: Request): boolean {
+  if (verifySession(req, 'mail')) return true;
   const expected = getMailAdminPassword();
   if (!expected) return false;
   const header = req.headers.get('x-mail-password');

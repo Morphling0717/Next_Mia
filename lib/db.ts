@@ -170,6 +170,38 @@ db.serialize(() => {
     `CREATE INDEX IF NOT EXISTS idx_mail_messages_topic_unread
        ON mail_messages (topic_id, is_read) WHERE deleted_at IS NULL`,
   );
+
+  // ===== RUNTIME MAINTENANCE / AUTH TABLES =====
+  db.run(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      id TEXT PRIMARY KEY NOT NULL,
+      applied_at TEXT NOT NULL
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS runtime_rate_limits (
+      key TEXT PRIMARY KEY NOT NULL,
+      timestamps TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  db.run(
+    `CREATE INDEX IF NOT EXISTS idx_runtime_rate_limits_updated_at
+       ON runtime_rate_limits (updated_at)`,
+  );
+  db.run(`
+    CREATE TABLE IF NOT EXISTS runtime_login_failures (
+      key TEXT PRIMARY KEY NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      first_fail_at INTEGER NOT NULL DEFAULT 0,
+      locked_until INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  db.run(
+    `CREATE INDEX IF NOT EXISTS idx_runtime_login_failures_updated_at
+       ON runtime_login_failures (updated_at)`,
+  );
 });
 
 // 封装 Promise 版本的常用方法，替代原先的回调地狱

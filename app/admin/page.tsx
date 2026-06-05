@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     pic: AssetFile[];
   }>({ memes: [], pic: [] });
   const [assetSortOrder, setAssetSortOrder] = useState<"asc" | "desc">("asc");
-  const [adminPassword, setAdminPassword] = useState<string>("");
+  const [adminSessionReady, setAdminSessionReady] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
   const [configUpdatedAt, setConfigUpdatedAt] = useState<string | null>(null);
   const [configUpdatedBy, setConfigUpdatedBy] = useState<string | null>(null);
@@ -73,7 +73,60 @@ export default function AdminDashboard() {
   // ===== INITIALIZE DATA =====
   useEffect(() => {
     void loadConfigFromDB(true);
+    void refreshAdminSession();
   }, []);
+
+  async function refreshAdminSession() {
+    try {
+      const res = await fetch("/api/auth/session", { cache: "no-store" });
+      const data = (await res.json()) as { admin?: boolean };
+      setAdminSessionReady(Boolean(data.admin));
+    } catch {
+      setAdminSessionReady(false);
+    }
+  }
+
+  async function loginAdminSession(password: string): Promise<boolean> {
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope: "admin", password }),
+    });
+    const data = (await res.json().catch(() => null)) as {
+      success?: boolean;
+      message?: string;
+    } | null;
+    if (res.ok && data?.success) {
+      setAdminSessionReady(true);
+      return true;
+    }
+    await Swal.fire({
+      icon: "error",
+      title: "验证失败",
+      text: data?.message || "密码错误或会话创建失败",
+      background: "#f5ede0",
+      color: "#b8506a",
+    });
+    setAdminSessionReady(false);
+    return false;
+  }
+
+  async function ensureAdminSession(reason: string): Promise<boolean> {
+    if (adminSessionReady) return true;
+    const { value: pass } = await Swal.fire({
+      title: "服务器验证",
+      text: reason,
+      input: "password",
+      inputPlaceholder: "Admin Password",
+      background: "#f5ede0",
+      color: "#2b2620",
+      confirmButtonColor: "#c4a96e",
+      confirmButtonText: "验证",
+      showCancelButton: true,
+    });
+    if (!pass) return false;
+    return loginAdminSession(pass);
+  }
 
   async function loadConfigFromDB(isInitial = false) {
     try {
@@ -230,34 +283,16 @@ export default function AdminDashboard() {
   // ===== TAB SWITCHING =====
   const switchTab = async (tab: AdminTabId) => {
     if (tab === "assets") {
-      if (!adminPassword) {
-        const { value: pass } = await Swal.fire({
-          title: "服务器验证",
-          text: "管理文件需要管理员权限",
-          input: "password",
-          inputPlaceholder: "Admin Password",
-          background: "#f5ede0",
-          color: "#2b2620",
-          confirmButtonColor: "#c4a96e",
-          confirmButtonText: "验证",
-          showCancelButton: true,
-        });
-        if (pass) {
-          setAdminPassword(pass);
-          await fetchAssets(currentAssetFolder, pass);
-        } else {
-          return;
-        }
-      } else {
-        await fetchAssets(currentAssetFolder, adminPassword);
-      }
+      const ok = await ensureAdminSession("管理文件需要管理员权限");
+      if (!ok) return;
+      await fetchAssets(currentAssetFolder);
     }
 
     setActiveTab(tab);
   };
 
   // ===== ASSETS FUNCTIONS =====
-  const fetchAssets = async (folder: "memes" | "pic", password?: string) => {
+  const fetchAssets = async (folder: "memes" | "pic") => {
     try {
       const res = await fetch("/api/admin/upload", {
         method: "POST",
@@ -265,7 +300,6 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           action: "list",
           folder: folder,
-          password: password || adminPassword,
         }),
       });
       const data = await res.json();
@@ -276,6 +310,7 @@ export default function AdminDashboard() {
         }));
         setCurrentAssetFolder(folder);
       } else {
+        if (res.status === 401) setAdminSessionReady(false);
         await Swal.fire({
           icon: "error",
           title: "加载失败",
@@ -300,7 +335,6 @@ export default function AdminDashboard() {
     const formData = new FormData();
     formData.append("action", "upload");
     formData.append("folder", currentAssetFolder);
-    formData.append("password", adminPassword);
     formData.append("file", file);
 
     Swal.fire({
@@ -330,7 +364,7 @@ export default function AdminDashboard() {
           timer: 1500,
           showConfirmButton: false,
         });
-        await fetchAssets(currentAssetFolder, adminPassword);
+        await fetchAssets(currentAssetFolder);
       } else {
         Swal.close();
         await Swal.fire({
@@ -380,7 +414,6 @@ export default function AdminDashboard() {
             folder: currentAssetFolder,
             filename: oldName,
             newname: newName,
-            password: adminPassword,
           }),
         });
         const data = await res.json();
@@ -395,7 +428,7 @@ export default function AdminDashboard() {
             background: "#f5ede0",
             color: "#2b2620",
           });
-          await fetchAssets(currentAssetFolder, adminPassword);
+          await fetchAssets(currentAssetFolder);
         } else {
           await Swal.fire({
             icon: "error",
@@ -427,12 +460,11 @@ export default function AdminDashboard() {
           action: "delete",
           folder: currentAssetFolder,
           filename: filename,
-          password: adminPassword,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        await fetchAssets(currentAssetFolder, adminPassword);
+        await fetchAssets(currentAssetFolder);
       } else {
         alert("删除失败: " + data.message);
       }
@@ -562,19 +594,10 @@ export default function AdminDashboard() {
     setEditorName(normalizedEditorName);
     window.localStorage.setItem(EDITOR_NAME_STORAGE_KEY, normalizedEditorName);
 
-    const { value: password } = await Swal.fire({
-      title: "身份验证",
-      input: "password",
-      inputPlaceholder: "请输入管理员密码",
-      background: "#f5ede0",
-      color: "#2b2620",
-      confirmButtonColor: "#c4a96e",
-    });
-
-    if (!password) return;
+    const ok = await ensureAdminSession("保存配置需要管理员权限");
+    if (!ok) return;
 
     const payload = {
-      password,
       editor_name: normalizedEditorName,
       base_config_version: configVersion,
       site_info: config,
@@ -680,7 +703,7 @@ export default function AdminDashboard() {
           assetsCache={assetsCache}
           currentAssetFolder={currentAssetFolder}
           assetSortOrder={assetSortOrder}
-          adminPassword={adminPassword}
+          adminPassword={adminSessionReady ? "__session__" : ""}
           updateConfig={updateConfig}
           updateNested={updateNested}
           updateArray={updateArray}
