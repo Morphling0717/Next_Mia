@@ -38,19 +38,26 @@ export function EditTopicModal({
 
   useEffect(() => {
     if (!open || !topic) return;
-    setTitle(topic.title);
-    setDescription(topic.description ?? "");
-    setNote(topic.note ?? "");
-    const hasWindow = !topic.isDefault && (!!topic.startsAt || !!topic.endsAt);
-    setUseTimeWindow(hasWindow);
-    setStartsLocal(
-      topic.startsAt ? utcIsoToBeijingLocal(topic.startsAt) : nowAsBeijingLocal(),
-    );
-    setEndsLocal(
-      topic.endsAt ? utcIsoToBeijingLocal(topic.endsAt) : plusDaysAsBeijingLocal(7),
-    );
-    setSubmitting(false);
-    setServerError(null);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setTitle(topic.title);
+      setDescription(topic.description ?? "");
+      setNote(topic.note ?? "");
+      const hasWindow = !topic.isDefault && (!!topic.startsAt || !!topic.endsAt);
+      setUseTimeWindow(hasWindow);
+      setStartsLocal(
+        topic.startsAt ? utcIsoToBeijingLocal(topic.startsAt) : nowAsBeijingLocal(),
+      );
+      setEndsLocal(
+        topic.endsAt ? utcIsoToBeijingLocal(topic.endsAt) : plusDaysAsBeijingLocal(7),
+      );
+      setSubmitting(false);
+      setServerError(null);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open, topic]);
 
   useEffect(() => {

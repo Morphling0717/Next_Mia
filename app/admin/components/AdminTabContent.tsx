@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import React from "react";
 import {
   CaretDownIcon as ArrowDown,
@@ -12,7 +14,7 @@ import {
   VideoIcon as Film,
   FolderIcon as FolderOpen,
   HomeIcon as Home,
-  ImageIcon as Image,
+  ImageIcon as ImageIcon,
   LinkIcon as Link,
   OrderListIcon as List,
   MailIcon as Mail,
@@ -24,8 +26,6 @@ import {
   SearchIcon as Search,
   DeleteIcon as Trash2,
   EditIcon as Type,
-  VideoIcon as Video,
-  CloseIcon as X,
   CloudUploadIcon as UploadCloud,
 } from "tdesign-icons-react";
 import { AdminTabId, AssetFile, SiteConfig, SongItem } from "../types";
@@ -127,7 +127,7 @@ export function AdminTabContent(props: AdminTabContentProps) {
             </div>
           </div>
           <div className="card">
-            <div className="section-title"><Image className="w-4 h-4" /> 表情立绘 (Expressions)</div>
+            <div className="section-title"><ImageIcon className="w-4 h-4" /> 表情立绘 (Expressions)</div>
             <p className="text-xs text-gray-400 mb-4">
               每个表情两张图：脸部小图（左侧缩略，放 <code>pic/face/</code>）+ 立绘大图（右侧大图，放 <code>pic/full/</code>）。建议共 6 个表情。
             </p>

@@ -1,7 +1,6 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -140,7 +139,7 @@ const HeroSection: React.FC<{ stats: string | number; config: RuntimeSiteConfig 
           </p>
           <p className="text-xs md:text-sm text-(--mia-gold-deep) tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            {cfg.statusText} //{' '}
+            {cfg.statusText} <span aria-hidden>{'//'}</span>{' '}
             {cfg.followersText}{' '}
             <span className="text-(--mia-gold) font-bold">{stats}</span>
           </p>
@@ -356,7 +355,7 @@ const LiveStatusSection: React.FC<{
     }
     // 内部路由（以 / 开头且不是 //）走当前标签页；外部 / mqq协议走新标签页。
     if (/^\/(?!\/)/.test(url)) {
-      window.location.href = url;
+      window.location.assign(url);
     } else {
       window.open(url, '_blank', 'noopener,noreferrer');
     }

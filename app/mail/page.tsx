@@ -39,6 +39,10 @@ import { ArchivedTopicsDrawer } from "@/components/mail/ArchivedTopicsDrawer";
 import { ArchiveConfirmModal } from "@/components/mail/ArchiveConfirmModal";
 import type { Topic } from "@/components/mail/mail-topic-types";
 import { formatBeijing } from "@/components/mail/mail-time";
+import {
+  DEFAULT_BILIBILI_API_URL,
+  fetchBilibiliData,
+} from "@/lib/bilibili-api";
 
 const PWD_STORAGE_KEY = "mia:mail:pwd";
 
@@ -373,13 +377,17 @@ function MailContent({
 
   // 挂载：拉主题 + 黑名单
   useEffect(() => {
-    void reloadTopics();
-    void reloadBlocklist();
+    queueMicrotask(() => {
+      void reloadTopics();
+      void reloadBlocklist();
+    });
   }, [reloadTopics, reloadBlocklist]);
 
   // activeTopicId 变化时重新拉留言列表（也适用于首次挂载）
   useEffect(() => {
-    void reload();
+    queueMicrotask(() => {
+      void reload();
+    });
   }, [reload]);
 
   // ===== 留言级操作：全部带 ?topicId= 做跨主题防呆 =====
@@ -573,16 +581,10 @@ function MailContent({
     }
   }, [activeTopic]);
 
-  const [shareUrl, setShareUrl] = useState("");
-  useEffect(() => {
-    if (!activeTopic) {
-      setShareUrl("");
-      return;
-    }
+  const shareUrl = useMemo(() => {
+    if (!activeTopic || typeof window === "undefined") return "";
     const origin = window.location.origin;
-    setShareUrl(
-      activeTopic.isDefault ? origin : `${origin}/m/${activeTopic.slug}`,
-    );
+    return activeTopic.isDefault ? origin : `${origin}/m/${activeTopic.slug}`;
   }, [activeTopic]);
 
   const [poster, setPoster] = useState<WindChimeQrPosterConfig>(() => ({
@@ -597,8 +599,8 @@ function MailContent({
     let cancelled = false;
     (async () => {
       try {
-        // 优先读 site_config 里的 bili API 地址，fallback 到主站默认
-        let biliUrl = "";
+        // 优先读 site_config 里的 bili API 地址，失败时使用主站默认地址。
+        let biliUrl = DEFAULT_BILIBILI_API_URL;
         try {
           const c = await fetch("/api/config", { cache: "no-store" });
           if (c.ok) {
@@ -613,12 +615,7 @@ function MailContent({
           /* 用 fallback */
         }
 
-        const r = await fetch(biliUrl, { cache: "no-store" });
-        if (!r.ok) return;
-        const d = (await r.json()) as {
-          success?: boolean;
-          user?: { face?: string };
-        };
+        const d = await fetchBilibiliData(biliUrl);
         const face = d?.user?.face;
         if (!cancelled && face) {
           setPoster((p) => (p.avatarSrc ? p : { ...p, avatarSrc: face }));

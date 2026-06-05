@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-page-custom-font */
+
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { PwaInstallGate } from "@/components/pwa-install-gate";

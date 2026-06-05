@@ -14,6 +14,7 @@ import { ToastContainer } from './UI';
 import { MailSpeedDial, type MailEntryTexts } from './mail/MailSpeedDial';
 import { GlobalMailBanner } from './mail/GlobalMailBanner';
 import type { MailTexts } from './mail/MailSendModal';
+import { fetchBilibiliData } from '@/lib/bilibili-api';
 import type { RuntimeSiteConfig } from '@/lib/site-config';
 
 // --- Types ---
@@ -97,6 +98,9 @@ export default function HomeClient({
   const [mailOpen, setMailOpen] = useState(false);
 
   const configVersionRef = useRef<number>(initialConfigVersion);
+  const configUpdatedToastFallbackRef = useRef(
+    initialSiteConfig.system.configUpdatedToast,
+  );
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(initialSiteConfig);
   const [configVersion, setConfigVersion] = useState<number>(initialConfigVersion);
   const [songs, setSongs] = useState<SongSystemSongItem[]>(initialSongs);
@@ -133,7 +137,7 @@ export default function HomeClient({
                 id,
                 message:
                   data.site_config?.system?.configUpdatedToast ||
-                  initialSiteConfig.system.configUpdatedToast,
+                  configUpdatedToastFallbackRef.current,
               },
             ]);
             setTimeout(() => {
@@ -175,24 +179,13 @@ export default function HomeClient({
           setStats(siteConfig.hero.statsPendingText);
           return;
         }
-        const response = await fetch(apiUrl);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            if (data.user) {
-              setStats(data.user.fans);
-              setLiveStatus(data.user.is_live);
-            }
-            if (data.videos) {
-              setVideos(data.videos);
-            }
-          } else {
-            console.error('API 业务错误:', data.error);
-            setStats(siteConfig.hero.statsErrorText);
-          }
-        } else {
-          console.error('Failed to fetch Bilibili data');
-          setStats(siteConfig.hero.statsErrorText);
+        const data = await fetchBilibiliData(apiUrl);
+        if (data.user) {
+          setStats(data.user.fans ?? siteConfig.hero.statsPendingText);
+          setLiveStatus(Boolean(data.user.is_live));
+        }
+        if (data.videos) {
+          setVideos(data.videos);
         }
       } catch (error) {
         console.error('API Fetch Error:', error);

@@ -39,12 +39,14 @@ export function GlobalMailBanner({
   const [dismissedSignature, setDismissedSignature] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    try {
-      setDismissedSignature(window.localStorage.getItem(LS_KEY));
-    } catch {
-      /* noop */
-    }
+    queueMicrotask(() => {
+      setMounted(true);
+      try {
+        setDismissedSignature(window.localStorage.getItem(LS_KEY));
+      } catch {
+        /* noop */
+      }
+    });
   }, []);
 
   const topics = useMemo(() => topicsProp ?? [], [topicsProp]);

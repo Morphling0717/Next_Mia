@@ -1,3 +1,5 @@
+import { DEFAULT_BILIBILI_API_URL } from "./bilibili-api";
+
 export type ExpressionItem = {
   id: string;
   face: string;
@@ -260,7 +262,7 @@ export const DEFAULT_SITE_CONFIG: EditableSiteConfig = {
     datePrefix: "DATE //",
   },
   api: {
-    bilibili: "https://1377297588-5v9c60xnw1.ap-guangzhou.tencentscf.com/?mid=3706975546248092",
+    bilibili: DEFAULT_BILIBILI_API_URL,
   },
   song_ui: {
     titlePrefix: "SONG",

@@ -129,8 +129,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: false, message: '未知操作' });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Upload API Error:", error);
-    return NextResponse.json({ success: false, message: '服务器内部错误: ' + error.message });
+    const message = error instanceof Error ? error.message : '未知错误';
+    return NextResponse.json({ success: false, message: '服务器内部错误: ' + message });
   }
 }

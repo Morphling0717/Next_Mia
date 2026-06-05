@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React from 'react';
 import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from 'framer-motion';
 import {
@@ -52,11 +50,14 @@ export interface GlassCardProps {
 // 原 UliUli 项目里用 size 控制、反复调用 <Icons.X size={20} /> 。tdesign 原生是 size="24px"
 // 字符串接口，这里重新包装一层让传数字也能用，代码调用点零修改。
 function wrapTd(
-  IconCmp: React.ComponentType<any>,
+  IconCmp: React.ComponentType<{ className?: string; size?: string | number }>,
 ): React.FC<IconProps> {
-  return ({ className = '', size = 20 }) => (
+  const WrappedIcon: React.FC<IconProps> = ({ className = '', size = 20 }) => (
     <IconCmp className={className} size={typeof size === 'number' ? `${size}px` : size} />
   );
+
+  WrappedIcon.displayName = `WrappedIcon(${IconCmp.displayName || IconCmp.name || 'Icon'})`;
+  return WrappedIcon;
 }
 
 export const Icons = {

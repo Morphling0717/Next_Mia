@@ -35,7 +35,10 @@ export const SongSystem: React.FC<SongSystemProps> = ({
 }) => {
   const uiConfig = config.song_ui;
 
-  const categories: SongCategory[] = uiConfig.categories as SongCategory[];
+  const categories = useMemo(
+    () => uiConfig.categories as SongCategory[],
+    [uiConfig.categories],
+  );
   const defaultTab = categories[0]?.id || 'all';
 
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
@@ -44,18 +47,22 @@ export const SongSystem: React.FC<SongSystemProps> = ({
   const [isMobile, setIsMobile] = useState(false);
 
   const skipStagger = isMobile || disableAnimation;
-  const songData = songs || [];
+  const songData = useMemo(() => songs ?? [], [songs]);
 
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const updateIsMobile = () => setIsMobile(window.innerWidth < 768);
+    const frame = window.requestAnimationFrame(updateIsMobile);
+    const handleResize = () => updateIsMobile();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
     if (!categories.some((category) => category.id === activeTab)) {
-      setActiveTab(defaultTab);
+      queueMicrotask(() => setActiveTab(defaultTab));
     }
   }, [activeTab, categories, defaultTab]);
 
