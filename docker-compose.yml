@@ -3,6 +3,8 @@ services:
     build:
       context: .
       args:
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+        NEXT_PUBLIC_WINDCHIME_DISPLAY_URL: ${NEXT_PUBLIC_WINDCHIME_DISPLAY_URL:-}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://mia.example.com}
     container_name: mia-website
     restart: unless-stopped
@@ -13,6 +15,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/codes.db
+      - WINDCHIME_MEDIA_DIRECTORY=/app/data/mail-media
     volumes:
       - ./data:/app/data
       - ./public/memes:/app/public/memes

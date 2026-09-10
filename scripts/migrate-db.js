@@ -35,6 +35,10 @@ function dbGet(db, sql, params = []) {
 }
 
 async function main() {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const { createWindChimeSqlite } = await import('@windchime/embed/sqlite');
+  const mail = createWindChimeSqlite({ filename: dbPath });
+  try { await mail.ready; } finally { await mail.close(); }
   if (!fs.existsSync(dbPath)) {
     throw new Error(`Database not found: ${dbPath}`);
   }

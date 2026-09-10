@@ -233,6 +233,7 @@ function MailContent({
   // ===== 留言列表 state（跟随 activeTopicId） =====
   const [items, setItems] = useState<FlaggableRecord[]>([]);
   const [counts, setCounts] = useState<Record<WindChimeInboxFilter, number>>({
+    flagged: 0,
     all: 0,
     unread: 0,
     favorited: 0,
@@ -314,7 +315,9 @@ function MailContent({
       if (handleAuthError(r)) return;
       if (!r.ok) throw new Error(await readError(r));
       const j = (await r.json()) as ListResponse;
-      setItems(j.items);
+      const flaggedResponse = await fetch(`/api/mail/messages?filter=flagged&topicId=${encodeURIComponent(activeTopicId)}`, { headers: authHeader, cache: "no-store" });
+      const flagged = flaggedResponse.ok ? await flaggedResponse.json() : { items: [] };
+      setItems([...j.items, ...flagged.items]);
       setCounts(j.counts);
     } catch (e) {
       setListError(e instanceof Error ? e.message : "加载失败");
@@ -771,6 +774,8 @@ function MailContent({
         </div>
       </section>
 
+      {/* 独立私人控制台，直播软件只采集其生成的展示链接。 */}
+      <p><a href="/mail/live" className="underline">打开风铃直播控制台 · 审核 / 待播 / 一键隐藏</a></p>
       {/* 收件箱（跟随当前主题） */}
       <section>
         <WindChimeAdminPanel
