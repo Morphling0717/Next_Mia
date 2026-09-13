@@ -16,11 +16,12 @@ import {
   WindChimeQrPosterEditor,
 } from "@windchime/embed";
 import type {
-  WindChimeBlockedSender,
-  WindChimeInboxFilter,
   WindChimeQrPosterConfig,
 } from "@windchime/embed";
 import "@windchime/embed/styles/windchime.css";
+import { useWindChimeTopics, useWindChimeInbox, useWindChimeBlocklist, useWindChimeSettings } from "@windchime/embed/react";
+import { mailClient } from "@/lib/windchime-client";
+import { MailConnectionKeys } from "@/components/mail/MailConnectionKeys";
 import {
   mailAdminTheme,
   mailBlocklistTheme,
@@ -30,7 +31,6 @@ import {
 import { BlockedTermsPanel } from "@/components/mail/BlockedTermsPanel";
 import {
   FlaggedMailPanel,
-  type FlaggableRecord,
 } from "@/components/mail/FlaggedMailPanel";
 import { MailTopicTabs } from "@/components/mail/MailTopicTabs";
 import { NewTopicModal } from "@/components/mail/NewTopicModal";
@@ -85,13 +85,13 @@ export default function MailPage() {
   };
 
   const onLogout = async () => {
+    setIsAuthed(false);
+    setPwdInput("");
     await fetch("/api/auth/session", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scope: "mail" }),
     }).catch(() => {});
-    setIsAuthed(false);
-    setPwdInput("");
   };
 
   return (
@@ -215,368 +215,81 @@ async function loginMailSession(pwd: string): Promise<boolean> {
   }
 }
 
-type ListResponse = {
-  items: FlaggableRecord[];
-  counts: Record<WindChimeInboxFilter, number>;
-};
-
 function MailContent({
   onUnauthorized,
 }: {
   onUnauthorized: () => void;
 }) {
-  // ===== 主题 state =====
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [activeTopicId, setActiveTopicId] = useState<string>("default");
-  const [topicsError, setTopicsError] = useState<string | null>(null);
-
-  // ===== 留言列表 state（跟随 activeTopicId） =====
-  const [items, setItems] = useState<FlaggableRecord[]>([]);
-  const [counts, setCounts] = useState<Record<WindChimeInboxFilter, number>>({
-    flagged: 0,
-    all: 0,
-    unread: 0,
-    favorited: 0,
-  });
-  const [loading, setLoading] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
-
-  // ===== 全局黑名单 state（跨主题共享） =====
-  const [blocklist, setBlocklist] = useState<WindChimeBlockedSender[]>([]);
-  const [blLoading, setBlLoading] = useState(false);
-  const [blError, setBlError] = useState<string | null>(null);
-
-  // ===== 主题开关 state（操作当前 activeTopic 的 isEnabled） =====
-  const [enabledSaving, setEnabledSaving] = useState(false);
-  const [enabledError, setEnabledError] = useState<string | null>(null);
-
-  // ===== 模态 / 抽屉 state =====
+  const settings = useWindChimeSettings(mailClient, { pollIntervalMs: 3000 });
+  const blockedTermsEnabled = settings.data?.blockedTermsEnabled === true;
+  const topicsApi = useWindChimeTopics(mailClient, { includeArchived: false, pollIntervalMs: 3000 });
+  const topics = topicsApi.items.map(topic => blockedTermsEnabled ? topic : { ...topic, flaggedCount: 0 });
+  const [selectedTopicId, setActiveTopicId] = useState("default");
+  const activeTopicId = topics.length && !topics.some(topic => topic.id === selectedTopicId) ? "default" : selectedTopicId;
+  const inbox = useWindChimeInbox(mailClient, { topicId: activeTopicId, pollIntervalMs: 3000 });
+  const flaggedInbox = useWindChimeInbox(mailClient, { topicId: activeTopicId, filter: "flagged", enabled: blockedTermsEnabled, pollIntervalMs: 3000 });
+  const blocked = useWindChimeBlocklist(mailClient, { pollIntervalMs: 3000 });
+  const items = blockedTermsEnabled ? inbox.items : inbox.items.map(item => ({ ...item, isFlagged: false }));
+  const counts = inbox.counts;
+  const loading = inbox.isLoading;
+  const listError = inbox.error?.message || inbox.mutationError?.message || null;
+  const blocklist = blocked.items;
+  const blLoading = blocked.isLoading;
+  const blError = blocked.error?.message || blocked.mutationError?.message || null;
+  const enabledSaving = topicsApi.pending;
+  const enabledError = topicsApi.mutationError?.message;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const topicsError = topicsApi.error?.message || actionError;
   const [showNewTopicModal, setShowNewTopicModal] = useState(false);
   const [showArchivedDrawer, setShowArchivedDrawer] = useState(false);
-  const [archiveConfirmTopic, setArchiveConfirmTopic] = useState<Topic | null>(
-    null,
-  );
+  const [archiveConfirmTopic, setArchiveConfirmTopic] = useState<Topic | null>(null);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
-  const [archiveBusy, setArchiveBusy] = useState(false);
+  const archiveBusy = topicsApi.pending;
   const [copiedToast, setCopiedToast] = useState(false);
-
   const authHeader = useMemo<Record<string, string>>(() => ({}), []);
+  const activeTopic = topics.find(topic => topic.id === activeTopicId) ?? null;
+  const editingTopic = topics.find(topic => topic.id === editingTopicId) ?? null;
+  const reload = inbox.reload;
+  const reloadTopics = topicsApi.reload;
+  const reloadBlocklist = blocked.reload;
 
-  const handleAuthError = useCallback(
-    (res: Response): boolean => {
-      if (res.status === 401) {
-        onUnauthorized();
-        return true;
-      }
-      return false;
-    },
-    [onUnauthorized],
-  );
-
-  const activeTopic = useMemo(
-    () => topics.find((t) => t.id === activeTopicId) ?? null,
-    [topics, activeTopicId],
-  );
-  const editingTopic = useMemo(
-    () => topics.find((t) => t.id === editingTopicId) ?? null,
-    [topics, editingTopicId],
-  );
-
-  // ===== 拉主题列表（管理端带 unreadCount / flaggedCount） =====
-  const reloadTopics = useCallback(async () => {
-    setTopicsError(null);
-    try {
-      const r = await fetch("/api/mail/topics", {
-        headers: authHeader,
-        cache: "no-store",
-      });
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      const j = (await r.json()) as { items: Topic[] };
-      setTopics(j.items);
-      // 如果当前选中的 tab 已经被归档或被删，退回 default
-      if (!j.items.some((t) => t.id === activeTopicId)) {
-        setActiveTopicId("default");
-      }
-    } catch (e) {
-      setTopicsError(e instanceof Error ? e.message : "主题列表加载失败");
-    }
-  }, [authHeader, handleAuthError, activeTopicId]);
-
-  // ===== 拉当前主题的留言列表 =====
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const r = await fetch(
-        `/api/mail/messages?topicId=${encodeURIComponent(activeTopicId)}`,
-        { headers: authHeader, cache: "no-store" },
-      );
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      const j = (await r.json()) as ListResponse;
-      const flaggedResponse = await fetch(`/api/mail/messages?filter=flagged&topicId=${encodeURIComponent(activeTopicId)}`, { headers: authHeader, cache: "no-store" });
-      const flagged = flaggedResponse.ok ? await flaggedResponse.json() : { items: [] };
-      setItems([...j.items, ...flagged.items]);
-      setCounts(j.counts);
-    } catch (e) {
-      setListError(e instanceof Error ? e.message : "加载失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [authHeader, activeTopicId, handleAuthError]);
-
-  const reloadBlocklist = useCallback(async () => {
-    setBlLoading(true);
-    setBlError(null);
-    try {
-      const r = await fetch("/api/mail/blocklist", {
-        headers: authHeader,
-        cache: "no-store",
-      });
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      const j = (await r.json()) as WindChimeBlockedSender[];
-      setBlocklist(j);
-    } catch (e) {
-      setBlError(e instanceof Error ? e.message : "加载失败");
-    } finally {
-      setBlLoading(false);
-    }
-  }, [authHeader, handleAuthError]);
-
-  // ===== 切换当前主题的开关 =====
-  const toggleCurrentTopicEnabled = useCallback(
-    async (next: boolean) => {
-      if (!activeTopic) return;
-      setEnabledSaving(true);
-      setEnabledError(null);
-      // 乐观更新（失败时回滚）
-      setTopics((xs) =>
-        xs.map((t) => (t.id === activeTopic.id ? { ...t, isEnabled: next } : t)),
-      );
-      try {
-        const r = await fetch(
-          `/api/mail/topics/${encodeURIComponent(activeTopic.id)}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json", ...authHeader },
-            body: JSON.stringify({ isEnabled: next }),
-          },
-        );
-        if (handleAuthError(r)) return;
-        if (!r.ok) throw new Error(await readError(r));
-        const updated = (await r.json()) as Topic;
-        setTopics((xs) =>
-          xs.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)),
-        );
-      } catch (e) {
-        // 回滚
-        setTopics((xs) =>
-          xs.map((t) =>
-            t.id === activeTopic.id ? { ...t, isEnabled: !next } : t,
-          ),
-        );
-        setEnabledError(e instanceof Error ? e.message : "保存失败");
-      } finally {
-        setEnabledSaving(false);
-      }
-    },
-    [authHeader, activeTopic, handleAuthError],
-  );
-
-  // 挂载：拉主题 + 黑名单
   useEffect(() => {
-    queueMicrotask(() => {
-      void reloadTopics();
-      void reloadBlocklist();
-    });
-  }, [reloadTopics, reloadBlocklist]);
-
-  // activeTopicId 变化时重新拉留言列表（也适用于首次挂载）
+    window.addEventListener("mail:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("mail:unauthorized", onUnauthorized);
+  }, [onUnauthorized]);
   useEffect(() => {
-    queueMicrotask(() => {
-      void reload();
-    });
-  }, [reload]);
-
-  // ===== 留言级操作：全部带 ?topicId= 做跨主题防呆 =====
-  const patch = useCallback(
-    async (id: string, body: { isRead?: boolean; isFavorited?: boolean }) => {
-      const r = await fetch(
-        `/api/mail/messages/${encodeURIComponent(id)}?topicId=${encodeURIComponent(activeTopicId)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", ...authHeader },
-          body: JSON.stringify(body),
-        },
-      );
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      await Promise.all([reload(), reloadTopics()]);
-    },
-    [authHeader, activeTopicId, handleAuthError, reload, reloadTopics],
-  );
-
-  const onDelete = useCallback(
-    async (id: string) => {
-      const r = await fetch(
-        `/api/mail/messages/${encodeURIComponent(id)}?topicId=${encodeURIComponent(activeTopicId)}`,
-        { method: "DELETE", headers: authHeader },
-      );
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      await Promise.all([reload(), reloadTopics()]);
-    },
-    [authHeader, activeTopicId, handleAuthError, reload, reloadTopics],
-  );
-
-  const onToggleRead = useCallback(
-    (id: string, isRead: boolean) => patch(id, { isRead }),
-    [patch],
-  );
-  const onToggleFavorite = useCallback(
-    (id: string, isFavorited: boolean) => patch(id, { isFavorited }),
-    [patch],
-  );
-
-  const onBlockSender = useCallback(
-    async (id: string) => {
-      const r = await fetch(
-        `/api/mail/messages/${encodeURIComponent(id)}/block?topicId=${encodeURIComponent(activeTopicId)}`,
-        { method: "POST", headers: authHeader },
-      );
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      // 拉黑会跨主题软删该 sender 所有留言 → 刷新所有相关列表
-      await Promise.all([reload(), reloadBlocklist(), reloadTopics()]);
-    },
-    [
-      authHeader,
-      activeTopicId,
-      handleAuthError,
-      reload,
-      reloadBlocklist,
-      reloadTopics,
-    ],
-  );
-
-  const batchOp = useCallback(
-    async (op: "delete" | "markRead", ids: string[]) => {
-      const r = await fetch(
-        `/api/mail/messages/batch?topicId=${encodeURIComponent(activeTopicId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeader },
-          body: JSON.stringify({ action: op, ids }),
-        },
-      );
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      await Promise.all([reload(), reloadTopics()]);
-    },
-    [authHeader, activeTopicId, handleAuthError, reload, reloadTopics],
-  );
-
-  const onBatchDelete = useCallback(
-    (ids: string[]) => batchOp("delete", ids),
-    [batchOp],
-  );
-  const onBatchMarkRead = useCallback(
-    (ids: string[]) => batchOp("markRead", ids),
-    [batchOp],
-  );
-
-  const onUnblock = useCallback(
-    async (hash: string) => {
-      const r = await fetch(
-        `/api/mail/blocklist/${encodeURIComponent(hash)}`,
-        { method: "DELETE", headers: authHeader },
-      );
-      if (handleAuthError(r)) return;
-      if (!r.ok) throw new Error(await readError(r));
-      await reloadBlocklist();
-    },
-    [authHeader, handleAuthError, reloadBlocklist],
-  );
-
-  // ===== 主题管理：新建 / 编辑 / 归档 / 恢复 / 复制分享链接 =====
-  const onCreatedTopic = useCallback((topic: Topic) => {
-    setTopics((xs) => [...xs, topic]);
-    setActiveTopicId(topic.id);
+    const topic = new URLSearchParams(window.location.search).get("topicId");
+    if (topic && topic.length <= 200) queueMicrotask(() => setActiveTopicId(topic));
   }, []);
 
-  const onUpdatedTopic = useCallback((topic: Topic) => {
-    setTopics((xs) =>
-      xs.map((x) => (x.id === topic.id ? { ...x, ...topic } : x)),
-    );
-  }, []);
+  const toggleCurrentTopicEnabled = async (enabled: boolean) => {
+    if (activeTopic) await topicsApi.update(activeTopic.id, { isEnabled: enabled }).catch(() => {});
+  };
+  const onDelete = async (id: string) => { await inbox.deleteMessage(id); };
+  const onToggleRead = async (id: string, isRead: boolean) => { await inbox.update(id, { isRead }); };
+  const onToggleFavorite = async (id: string, isFavorited: boolean) => { await inbox.update(id, { isFavorited }); };
+  const onBlockSender = async (id: string) => { await inbox.blockSender(id); };
+  const onBatchDelete = async (ids: string[]) => { await inbox.batch("delete", ids); };
+  const onBatchMarkRead = async (ids: string[]) => { await inbox.batch("markRead", ids); };
+  const onUnblock = async (hash: string) => { await blocked.unblock(hash); };
+  const onCreatedTopic = (topic: Topic) => { setActiveTopicId(topic.id); void reloadTopics(); };
+  const onUpdatedTopic = () => { setEditingTopicId(null); void reloadTopics(); };
+  const onRestoredTopic = (topic: Topic) => { setActiveTopicId(topic.id); setShowArchivedDrawer(false); void reloadTopics(); };
+  const performArchive = async (topic: Topic, markReadFirst: boolean) => {
+    setActionError(null);
+    try {
+      await topicsApi.archive(topic.id, { markReadFirst });
+      if (activeTopicId === topic.id) setActiveTopicId("default");
+      setArchiveConfirmTopic(null);
+    } catch (error) { setActionError(error instanceof Error ? error.message : "归档失败"); }
+  };
+  const handleArchiveIntent = (topic: Topic) => {
+    if (topic.isDefault) return;
+    if ((topic.unreadCount ?? 0) + (topic.flaggedCount ?? 0) > 0) setArchiveConfirmTopic(topic);
+    else void performArchive(topic, false);
+  };
 
-  const onRestoredTopic = useCallback((topic: Topic) => {
-    setTopics((xs) => {
-      const without = xs.filter((x) => x.id !== topic.id);
-      return [...without, topic];
-    });
-    setActiveTopicId(topic.id);
-    setShowArchivedDrawer(false);
-  }, []);
-
-  // 真正归档（DELETE），不问二次确认
-  const performArchive = useCallback(
-    async (topic: Topic, markReadFirst: boolean) => {
-      setArchiveBusy(true);
-      try {
-        if (markReadFirst) {
-          // 先把未读批量 markRead
-          const unreadIds = items
-            .filter((m) => !m.isRead && !m.isFlagged)
-            .map((m) => m.id);
-          if (unreadIds.length > 0) {
-            await fetch(
-              `/api/mail/messages/batch?topicId=${encodeURIComponent(topic.id)}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json", ...authHeader },
-                body: JSON.stringify({ action: "markRead", ids: unreadIds }),
-              },
-            );
-          }
-        }
-        const r = await fetch(
-          `/api/mail/topics/${encodeURIComponent(topic.id)}`,
-          { method: "DELETE", headers: authHeader },
-        );
-        if (handleAuthError(r)) return;
-        if (!r.ok) throw new Error(await readError(r));
-        // 归档成功：切回 default，刷新
-        setActiveTopicId("default");
-        await reloadTopics();
-      } catch (e) {
-        alert(e instanceof Error ? e.message : "归档失败");
-      } finally {
-        setArchiveBusy(false);
-        setArchiveConfirmTopic(null);
-      }
-    },
-    [authHeader, handleAuthError, items, reloadTopics],
-  );
-
-  // 点"归档"按钮（主内容区 或 tab 上的小图标）
-  const handleArchiveIntent = useCallback(
-    (topic: Topic) => {
-      if (topic.isDefault) return; // 默认主题不可归档（按钮本来就会隐藏）
-      const hasBlockers =
-        (topic.unreadCount ?? 0) + (topic.flaggedCount ?? 0) > 0;
-      if (hasBlockers) {
-        setArchiveConfirmTopic(topic);
-      } else {
-        void performArchive(topic, false);
-      }
-    },
-    [performArchive],
-  );
-
-  const onCopyShareLink = useCallback(async () => {
+  const onCopyShareLink = async () => {
     if (!activeTopic) return;
     const origin = window.location.origin;
     const url = activeTopic.isDefault
@@ -589,7 +302,7 @@ function MailContent({
     } catch {
       alert(`请手动复制：${url}`);
     }
-  }, [activeTopic]);
+  };
 
   const shareUrl = useMemo(() => {
     if (!activeTopic || typeof window === "undefined") return "";
@@ -641,6 +354,7 @@ function MailContent({
       {/* 主题 Tab 栏（方案 §6.1） */}
       <section>
         <MailTopicTabs
+        showGlobalSettings={blockedTermsEnabled}
           topics={topics}
           activeTopicId={activeTopicId}
           onSwitch={setActiveTopicId}
@@ -774,8 +488,8 @@ function MailContent({
         </div>
       </section>
 
-      {/* 独立私人控制台，直播软件只采集其生成的展示链接。 */}
-      <p><a href="/mail/live" className="underline">打开风铃直播控制台 · 审核 / 待播 / 一键隐藏</a></p>
+      <MailConnectionKeys topicId={activeTopicId} topicTitle={activeTopic?.title} />
+      {settings.error ? <p role="alert">设置同步失败：{settings.error.message}</p> : null}
       {/* 收件箱（跟随当前主题） */}
       <section>
         <WindChimeAdminPanel
@@ -802,18 +516,21 @@ function MailContent({
       </section>
 
       {/* 待审核（命中敏感词的留言，默认折叠，点击查看原文） */}
-      <section>
+      {blockedTermsEnabled ? <section>
         <FlaggedMailPanel
-          items={items}
+          key={activeTopicId}
+          items={flaggedInbox.items}
           authHeader={authHeader}
           topicId={activeTopicId}
           onUnauthorized={onUnauthorized}
           onAfterAction={() => {
             void reload();
             void reloadTopics();
+            void flaggedInbox.reload();
+            void reloadBlocklist();
           }}
         />
-      </section>
+      </section> : null}
 
       {/* 黑名单（全局，跨主题共享） */}
       <section>
@@ -876,12 +593,9 @@ function MailContent({
       )}
 
       {/* 全局设置：敏感词（跨主题共享，低频配置） */}
-      <section id="global-settings">
-        <BlockedTermsPanel
-          authHeader={authHeader}
-          onUnauthorized={onUnauthorized}
-        />
-      </section>
+      {blockedTermsEnabled ? <section id="global-settings">
+        <BlockedTermsPanel />
+      </section> : null}
 
       {/* ===== 模态 / 抽屉 ===== */}
       <NewTopicModal
@@ -904,6 +618,7 @@ function MailContent({
         onRestored={onRestoredTopic}
       />
       <ArchiveConfirmModal
+        blockedTermsEnabled={blockedTermsEnabled}
         open={!!archiveConfirmTopic}
         topic={archiveConfirmTopic}
         busy={archiveBusy}
@@ -937,13 +652,4 @@ function avatarSrcForCanvas(src: string | undefined | null): string {
     /* 非合法 URL，原样返回 */
   }
   return s;
-}
-
-async function readError(res: Response): Promise<string> {
-  const ct = res.headers.get("content-type") ?? "";
-  if (ct.includes("application/json")) {
-    const j = (await res.json().catch(() => null)) as { error?: string } | null;
-    return j?.error ?? res.statusText;
-  }
-  return (await res.text().catch(() => "")) || res.statusText;
 }

@@ -13,6 +13,7 @@ type Props = {
   onMarkReadThenArchive: () => void;
   onArchiveAnyway: () => void;
   busy?: boolean;
+  blockedTermsEnabled?: boolean;
 };
 
 /**
@@ -21,7 +22,7 @@ type Props = {
  * 主播点某主题的"归档"按钮时，如果该主题还有未读 / 待审核留言，先弹这个
  * modal 让主播有机会：
  * - 取消：放弃归档
- * - 先标已读再归档：先批量 markRead 再 DELETE
+ * - 先标已读再归档：由共享服务在同一事务中标记已读并归档
  * - 仍然归档：直接 DELETE（未读信件会进入"往期活动"抽屉，主播日后还能恢复查看）
  *
  * counts 从 `topic.unreadCount` / `topic.flaggedCount` 读（管理端列表已带）。
@@ -33,6 +34,7 @@ export function ArchiveConfirmModal({
   onMarkReadThenArchive,
   onArchiveAnyway,
   busy,
+  blockedTermsEnabled = false,
 }: Props) {
   // ESC 取消
   useEffect(() => {
@@ -47,7 +49,7 @@ export function ArchiveConfirmModal({
   if (typeof document === "undefined") return null;
 
   const unread = topic?.unreadCount ?? 0;
-  const flagged = topic?.flaggedCount ?? 0;
+  const flagged = blockedTermsEnabled ? (topic?.flaggedCount ?? 0) : 0;
 
   return createPortal(
     <AnimatePresence>
@@ -113,7 +115,7 @@ export function ArchiveConfirmModal({
               >
                 <div className="font-bold text-(--mia-gold-deep)">✓ 先标为已读再归档</div>
                 <div className="mt-1 text-[11px] text-(--mia-gold-deep)/75">
-                  所有未读先 markRead，然后归档（推荐）
+                  {blockedTermsEnabled ? "先标记普通未读信件，再归档；待审核信件保留原状态" : "先标记当前话题的未读信件，再归档"}
                 </div>
               </button>
               <button
