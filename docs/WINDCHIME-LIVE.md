@@ -1,6 +1,8 @@
-# 风铃 0.7.0：网站信箱与桌面连接
+# 风铃 0.8.0：网站信箱与桌面连接
 
-本分支固定安装 `vendor/windchime-embed-0.7.0.tgz`，与 UliUli 使用同一压缩包及对应 lockfile。共享库维护信件、话题、审核、授权和数据库规则；网站保留原有 `/mail` 界面，Windows 桌面提供完整信箱管理和独立直播展示窗口。
+本分支固定安装 `vendor/windchime-embed-0.8.0.tgz`，与 UliUli 使用同一压缩包及对应 lockfile。共享库维护信件、话题、审核、授权和数据库规则；网站保留原有 `/mail` 界面，Windows 桌面提供完整信箱管理和独立直播展示窗口。
+
+[0.8.0 升级与本轮验证](WINDCHIME-080-UPGRADE.md) 记录新增能力及网站必须同步升级的原因。
 
 Mia 本轮未部署生产网站；本地构建、测试和依赖升级不代表线上已更新。
 
@@ -27,6 +29,8 @@ Mia 本轮未部署生产网站；本地构建、测试和依赖升级不代表�
 
 ## 独立展示窗口
 
+0.8.0 增加六种可独立搭配主题的排版，包括弹幕侧栏、竖向信笺和居中短笺；只有文字自动循环滚动，图片保持比例固定在下方。桌面外观编辑器提供推荐尺寸和图片区占比。直播工作台模块可拆成置顶磁贴，“下一封”支持自定义热键。网站与桌面都需要更新至 0.8.0 才能保存新版外观；旧站点允许本地预览并明确提示升级。
+
 在桌面打开标题为 `WindChime Display` 的窗口，由 OBS 或直播姬按严格窗口标题捕获。不要捕获私人控制台、网页后台或整个桌面。首次打开、重启、断线恢复时保持空白，需要新的手动上屏；紧急时使用“一键隐藏”、托盘入口或已配置的快捷键。
 
 独立 Windows 模式不需要 B 站密钥、接入网关或展示 CORS。通用库的浏览器展示和平台适配代码保留为独立开发者扩展，本版网页不提供直播控制台入口，普通窗口采集不等于官方平台接入或审核上架。
@@ -47,12 +51,12 @@ Mia 本轮未部署生产网站；本地构建、测试和依赖升级不代表�
 4. 执行 `npm run build`，在隔离站点检查 `/mail`、密钥导入和原信箱功能。仅更新桌面安装包不会升级线上 API。
 5. 副本验证后，在维护窗口停止旧服务、完成最终一致备份和迁移，再启动单个持久 Node 进程。不要让同一 SQLite 数据库由多个服务副本并行提供直播控制。
 
-回退前应先在副本上确认旧代码与已迁移库的兼容性。优先保留升级后的真实写入；若必须恢复数据，只能在停止写入后核对并恢复完整一致备份，不手工删列，不覆盖运行中的数据库。
+0.7 无法直接读取新增的外观 JSON。回退应在停写并备份当时数据、导出完整外观后，仅事务转换旧版支持的外观字段和排版，保留升级后的信件、授权、批准与队列；或使用已验证兼容的回退镜像。禁止用升级前旧整库覆盖当前数据，具体步骤见 [0.8.0 回退说明](WINDCHIME-080-UPGRADE.md#数据与升级顺序)。
 
 两站压缩包应逐字节一致。PowerShell 可检查：
 
 ```powershell
-Get-FileHash .\vendor\windchime-embed-0.7.0.tgz -Algorithm SHA256
+Get-FileHash .\vendor\windchime-embed-0.8.0.tgz -Algorithm SHA256
 npm ci
 ```
 
@@ -63,13 +67,13 @@ npm ci
 在没有生产 `.env` 的测试副本中设置临时数据库、图片目录和测试密码；以下命令不应在生产环境执行：
 
 ```powershell
-$env:DATABASE_PATH = "$env:TEMP\windchime-mia-070-test\codes.db"
-$env:WINDCHIME_MEDIA_DIRECTORY = "$env:TEMP\windchime-mia-070-test\media"
+$env:DATABASE_PATH = "$env:TEMP\windchime-mia-080-test\codes.db"
+$env:WINDCHIME_MEDIA_DIRECTORY = "$env:TEMP\windchime-mia-080-test\media"
 $env:ADMIN_PASSWORD = "replace-with-local-test-password"
 $env:MAIL_AUTH_PASSWORD = "replace-with-local-test-password"
 $env:WINDCHIME_HASH_SALT = "local-test-only"
 $env:WINDCHIME_SITE_ORIGIN = "http://localhost:3032"
-$env:WINDCHIME_BUILD_DIRECTORY = ".windchime-070-test"
+$env:WINDCHIME_BUILD_DIRECTORY = ".windchime-080-test"
 npm ci
 npm run dev -- --hostname 127.0.0.1 --port 3032
 ```
