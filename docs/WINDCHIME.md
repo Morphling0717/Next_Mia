@@ -1,6 +1,6 @@
 # 风铃接入与升级
 
-本分支固定接入 `@windchime/embed@0.8.3`，使用仓库内 `vendor/windchime-embed-0.8.3.tgz` 和对应 lockfile，与 UliUli 使用同一压缩包。信件、话题、授权、审核、屏蔽和归档由共享服务维护，Mia 保留网站原有登录、页面和样式。
+本分支固定接入 `@windchime/embed@0.8.3`，使用仓库内 `vendor/windchime-embed-0.8.3-c4efb3dd2d7dab7fa432bc29350f0b3ed74b6a58.tgz` 和对应 lockfile，与 UliUli 使用同一压缩包。信件、话题、授权、审核、屏蔽和归档由共享服务维护，Mia 保留网站原有登录、页面和样式。
 
 当前 `/mail` 保留信箱功能，并提供全站桌面连接密钥，需要风铃桌面版 0.7.0 或更高版本。旧密钥与旧配对仍只管理原话题；`/mail/live` 只重定向到 `/mail`，桌面使用的 `/api/mail/live/*` 服务接口继续保留。敏感词默认关闭，开关仅在桌面；关闭后原来标记的来信仍能在私人收件箱正常阅读。
 
