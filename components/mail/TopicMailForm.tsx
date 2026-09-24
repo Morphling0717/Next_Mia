@@ -57,6 +57,7 @@ export function TopicMailForm({ topic, texts }: Props) {
           linkUrl: payload.linkUrl,
           senderFingerprint: payload.senderFingerprint,
           turnstileToken: payload.turnstileToken,
+          attachments: payload.attachments,
           topicSlug: topic.slug,
         }),
       });
@@ -137,6 +138,8 @@ export function TopicMailForm({ topic, texts }: Props) {
         {/* WindChimeSender 表单 */}
         <section className="flex-1">
           <WindChimeSender
+            enableImages
+            topicSlug={topic.slug}
             title={`MAIL · ${topic.title}`}
             tagline="在这里匿名写下你想说的话 ~"
             statusOpenLabel="ONLINE"

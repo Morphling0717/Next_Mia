@@ -92,6 +92,7 @@ export function MailSendModal({ open, onOpenChange, texts, enabled }: Props) {
           linkUrl: payload.linkUrl,
           senderFingerprint: payload.senderFingerprint,
           turnstileToken: payload.turnstileToken,
+          attachments: payload.attachments,
         }),
       });
       if (!r.ok && r.status !== 202) {
@@ -158,6 +159,7 @@ export function MailSendModal({ open, onOpenChange, texts, enabled }: Props) {
               aria-disabled={isDisabled}
             >
               <WindChimeSender
+                enableImages
                 title={texts?.senderTitle ?? ""}
                 tagline={texts?.senderTagline ?? ""}
                 statusOpenLabel={texts?.statusOpen ?? ""}
